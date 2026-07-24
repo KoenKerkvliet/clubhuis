@@ -48,7 +48,9 @@ export function Friends() {
       .ilike('username', `%${query.trim().toLowerCase()}%`)
       .neq('id', profile?.id ?? '')
       .limit(15)
-    setResults(data ?? [])
+    // profile_cards is een view op profiles (id/username/display_name zijn daar NOT NULL);
+    // Supabase's codegen markeert view-kolommen desondanks als nullable.
+    setResults((data ?? []) as ProfileCard[])
   }
 
   async function sendRequest(addresseeId: string) {

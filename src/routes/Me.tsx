@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card'
 interface OwnStory {
   id: string
   text: string
-  visibility: 'private' | 'friends'
+  visibility: string
   created_at: string
 }
 
