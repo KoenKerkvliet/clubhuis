@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
-import { Field } from '@/components/ui/Field'
+import { Avatar } from '@/components/ui/Avatar'
+import { BigTitle } from '@/components/layout/PageHeader'
+import { SearchIcon } from '@/components/ui/icons'
 
 interface ProfileCard {
   id: string
@@ -25,10 +28,14 @@ export function Friends() {
   const [results, setResults] = useState<ProfileCard[]>([])
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
   const [incoming, setIncoming] = useState<IncomingRequest[]>([])
+  const [friends, setFriends] = useState<{ id: string; display_name: string; username: string }[]>([])
 
   useEffect(() => {
-    loadIncoming()
-  }, [])
+    if (profile) {
+      loadIncoming()
+      loadFriends()
+    }
+  }, [profile])
 
   async function loadIncoming() {
     const { data } = await supabase
@@ -37,6 +44,28 @@ export function Friends() {
       .eq('status', 'pending')
       .eq('addressee_id', profile?.id ?? '')
     setIncoming((data as unknown as IncomingRequest[]) ?? [])
+  }
+
+  async function loadFriends() {
+    const { data } = await supabase
+      .from('friendships')
+      .select(
+        'requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, display_name), addressee:profiles!friendships_addressee_id_fkey(id, username, display_name)',
+      )
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${profile?.id},addressee_id.eq.${profile?.id}`)
+
+    const rows = (data ?? []) as unknown as {
+      requester_id: string
+      requester: { id: string; username: string; display_name: string } | null
+      addressee: { id: string; username: string; display_name: string } | null
+    }[]
+
+    setFriends(
+      rows
+        .map((row) => (row.requester_id === profile?.id ? row.addressee : row.requester))
+        .filter((f): f is { id: string; username: string; display_name: string } => f !== null),
+    )
   }
 
   async function handleSearch(e: FormEvent) {
@@ -55,69 +84,81 @@ export function Friends() {
 
   async function sendRequest(addresseeId: string) {
     if (!profile) return
-    const { error } = await supabase
-      .from('friendships')
-      .insert({ requester_id: profile.id, addressee_id: addresseeId })
+    const { error } = await supabase.from('friendships').insert({ requester_id: profile.id, addressee_id: addresseeId })
     if (!error) setSentTo((prev) => new Set(prev).add(addresseeId))
   }
 
   async function respond(requestId: string, status: 'accepted' | 'declined') {
     await supabase.from('friendships').update({ status }).eq('id', requestId)
     setIncoming((prev) => prev.filter((r) => r.id !== requestId))
+    if (status === 'accepted') loadFriends()
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-xl font-bold text-ink-700">Vrienden</h1>
+    <div className="flex flex-col gap-5">
+      <BigTitle>Vrienden</BigTitle>
 
-      <form onSubmit={handleSearch} className="flex items-end gap-2">
-        <div className="flex-1">
-          <Field
-            id="search"
-            label="Zoek op gebruikersnaam"
+      <form onSubmit={handleSearch}>
+        <div className="flex items-center gap-2 rounded-pill bg-paper px-4 py-3 shadow-softer">
+          <SearchIcon width={18} height={18} className="text-ink-400" />
+          <input
+            className="w-full bg-transparent text-ink-700 outline-none placeholder:text-ink-400/60"
+            placeholder="Zoek op gebruikersnaam"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
         </div>
-        <Button type="submit" variant="secondary">
-          Zoek
-        </Button>
       </form>
 
-      {incoming.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold text-ink-500">Nieuwe verzoeken</h2>
-          {incoming.map((req) => (
-            <Card key={req.id} className="flex items-center justify-between">
-              <span className="font-medium text-ink-700">{req.profiles?.display_name}</span>
-              <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => respond(req.id, 'accepted')}>
-                  Accepteren
-                </Button>
-                <Button variant="ghost" onClick={() => respond(req.id, 'declined')}>
-                  Weigeren
-                </Button>
+      {incoming.map((req) => (
+        <div key={req.id} className="rounded-card bg-blue-100 p-5">
+          <p className="text-xs font-extrabold uppercase tracking-wide text-blue-500">1 verzoek</p>
+          <div className="mt-3 flex items-center gap-3">
+            <Avatar name={req.profiles?.display_name ?? '?'} size={44} />
+            <div>
+              <p className="font-extrabold text-ink-900">{req.profiles?.display_name}</p>
+              <p className="text-sm font-semibold text-ink-400">@{req.profiles?.username}</p>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Button onClick={() => respond(req.id, 'accepted')}>Accepteren</Button>
+            <Button variant="secondary" onClick={() => respond(req.id, 'declined')}>
+              Weigeren
+            </Button>
+          </div>
+        </div>
+      ))}
+
+      {results.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          {results.map((r) => (
+            <Card key={r.id} className="flex items-center gap-3">
+              <Avatar name={r.display_name} size={44} />
+              <div className="flex-1">
+                <p className="font-extrabold text-ink-900">{r.display_name}</p>
+                <p className="text-sm font-semibold text-ink-400">@{r.username}</p>
               </div>
+              <Button variant={sentTo.has(r.id) ? 'muted' : 'secondary'} disabled={sentTo.has(r.id)} onClick={() => sendRequest(r.id)}>
+                {sentTo.has(r.id) ? 'Verzonden' : 'Vriendschapsverzoek sturen'}
+              </Button>
             </Card>
           ))}
         </div>
       )}
 
-      <div className="flex flex-col gap-2">
-        {results.map((r) => (
-          <Card key={r.id} className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-ink-700">{r.display_name}</p>
-              <p className="text-sm text-ink-500">@{r.username}</p>
-            </div>
-            <Button
-              variant="secondary"
-              disabled={sentTo.has(r.id)}
-              onClick={() => sendRequest(r.id)}
-            >
-              {sentTo.has(r.id) ? 'Verzonden' : 'Vriendschapsverzoek sturen'}
-            </Button>
-          </Card>
+      <p className="text-sm font-extrabold uppercase tracking-wide text-ink-400">Mijn {friends.length} vrienden</p>
+      <div className="flex flex-col gap-2.5">
+        {friends.length === 0 && <Card className="text-center text-ink-400">Nog geen vrienden — zoek iemand hierboven.</Card>}
+        {friends.map((friend) => (
+          <Link key={friend.id} to={`/vrienden/${friend.username}`}>
+            <Card className="flex items-center gap-3">
+              <Avatar name={friend.display_name} size={44} />
+              <div className="flex-1">
+                <p className="font-extrabold text-ink-900">{friend.display_name}</p>
+              </div>
+              <p className="text-sm font-semibold text-ink-400">@{friend.username}</p>
+            </Card>
+          </Link>
         ))}
       </div>
     </div>

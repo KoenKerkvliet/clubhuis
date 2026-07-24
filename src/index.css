@@ -4,50 +4,78 @@
 @import "@fontsource/caveat/400.css";
 @import "@fontsource/caveat/600.css";
 
+/*
+ * Palet en vormtaal 1-op-1 overgenomen uit de mockups (11 schermen,
+ * "MCP kindvriendelijk platform.pdf"), niet uit de blueprint-tekst.
+ * De hoofdactiekleur is in de mockups een gedempt leisteenblauw, geen paars.
+ */
 @theme {
-  /* Zacht blauw: rustige structuur (achtergronden, kaarten, randen) */
-  --color-blue-50: #F4F7FF;
-  --color-blue-100: #E7EDFF;
-  --color-blue-200: #D2DCFF;
-  --color-blue-300: #AFC0FA;
-  --color-blue-400: #8AA0F2;
-  --color-blue-500: #6B85E8;
-  --color-blue-600: #5468CE;
-  --color-blue-700: #4353A6;
+  /* Warme cream in plaats van klinisch wit */
+  --color-cream: #F7F4EF;
+  --color-cream-100: #FCFAF5;
+  --color-paper: #FFFFFF;
 
-  /* Paars: de ene hoofdactie (Vertellen-knop, links, focus) */
-  --color-purple-50: #F5F3FF;
-  --color-purple-100: #EBE5FF;
-  --color-purple-200: #D6CBFF;
-  --color-purple-300: #B7A0FF;
-  --color-purple-400: #9B7DF5;
-  --color-purple-500: #7C5CE0;
-  --color-purple-600: #6D4FE0;
-  --color-purple-700: #5A3EC2;
+  /* Marineblauw/inkt: koppen en de donkerste UI-accenten */
+  --color-ink-900: #231F38;
+  --color-ink-700: #26213A;
+  --color-ink-500: #4A4560;
+  --color-ink-400: #6A6378;
 
-  /* Oranje: alleen voor warme momenten (Aura) */
-  --color-aura-50: #FFF4EB;
-  --color-aura-100: #FFE6D2;
-  --color-aura-300: #FFC08A;
-  --color-aura-500: #FF9F5A;
-  --color-aura-600: #F0813A;
+  /* Het ene hoofdactie-blauw (Vertellen-knop, links, geselecteerde staat) */
+  --color-blue-50: #F4F8FC;
+  --color-blue-100: #E4EEF6;
+  --color-blue-200: #C7DCEC;
+  --color-blue-400: #5D8CB3;
+  --color-blue-500: #3F739F;
+  --color-blue-600: #345E82;
+  --color-blue-700: #2A4C69;
 
-  /* Neutralen: warm, geen klinisch wit */
-  --color-paper-0: #FFFDFB;
-  --color-paper-50: #FBFAF8;
-  --color-paper-100: #F3F1ED;
-  --color-ink-500: #4A4A57;
-  --color-ink-700: #2E2E3A;
-  --color-ink-900: #1D1D26;
+  /* Oranje: alleen voor warme momenten (Aura, het puntje in het woordmerk) */
+  --color-aura: #F78E2D;
+  --color-aura-soft: #FDEAD6;
+  --color-aura-text: #B5651D;
+
+  /* Neutrale badge (reacties) */
+  --color-neutral-badge: #F4F1EB;
+
+  /* Avatar-palet: roteert per gebruiker, geen betekenis */
+  --color-avatar-green-bg: #CFE8D7;
+  --color-avatar-green-text: #3E6B4C;
+  --color-avatar-peach-bg: #FBDCC0;
+  --color-avatar-peach-text: #B5651D;
+  --color-avatar-blue-bg: #DCE9F9;
+  --color-avatar-blue-text: #2F4E7A;
+  --color-avatar-sand-bg: #EDE3D3;
+  --color-avatar-sand-text: #8B6B3D;
+
+  /* Krabbels: gekleurde briefjes, nooit wit */
+  --color-scribble-peach: #FBE3C8;
+  --color-scribble-peach-text: #8B4B1D;
+  --color-scribble-blue: #D9E8FB;
+  --color-scribble-blue-text: #2F4E7A;
+
+  /* Waarschuwing: altijd amber, nooit rood */
+  --color-warn-bg: #F0E6C8;
+  --color-warn-text: #7A5F22;
+  --color-warn-border: #DDAE68;
+
+  /* "Het Clubhuis slaapt even" — enige donkere scherm in de app */
+  --color-night-bg: #1F2F42;
+  --color-night-badge: #2C4257;
+  --color-night-icon: #9DB8CE;
+  --color-night-text: #9FB4CC;
+
+  --color-overlay: rgb(38 33 58 / 70%);
 
   --font-sans: "Nunito Variable", "Nunito", system-ui, sans-serif;
   --font-hand: "Caveat", "Segoe Print", cursive;
 
-  --radius-card: 1.25rem;
+  --radius-card: 1.75rem;
+  --radius-squircle: 1rem;
   --radius-pill: 999px;
 
-  --shadow-soft: 0 8px 24px -12px rgb(84 104 206 / 0.18);
-  --shadow-softer: 0 4px 14px -8px rgb(84 104 206 / 0.14);
+  --shadow-soft: 0 10px 28px -14px rgb(38 33 58 / 0.25);
+  --shadow-softer: 0 4px 16px -10px rgb(38 33 58 / 0.18);
 }
 
 @layer base {
@@ -57,13 +85,13 @@
 
   body {
     font-family: var(--font-sans);
-    background-color: var(--color-blue-50);
+    background-color: var(--color-cream);
     color: var(--color-ink-700);
     min-height: 100dvh;
   }
 
   :focus-visible {
-    outline: 3px solid var(--color-purple-300);
+    outline: 3px solid var(--color-blue-200);
     outline-offset: 2px;
   }
 }

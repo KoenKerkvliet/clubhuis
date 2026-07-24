@@ -1,18 +1,19 @@
 import type { ButtonHTMLAttributes } from 'react'
 
-type Variant = 'primary' | 'secondary' | 'ghost'
+type Variant = 'primary' | 'secondary' | 'ghost' | 'muted'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-[var(--radius-pill)] px-5 py-3 font-semibold transition-colors disabled:opacity-50 disabled:pointer-events-none'
+  'inline-flex items-center justify-center gap-2 rounded-pill px-6 py-3.5 font-extrabold transition-colors disabled:opacity-50 disabled:pointer-events-none'
 
 const variants: Record<Variant, string> = {
-  primary: 'bg-purple-600 text-paper-0 shadow-soft hover:bg-purple-700 active:bg-purple-700',
-  secondary: 'bg-blue-100 text-purple-700 hover:bg-blue-200',
-  ghost: 'bg-transparent text-ink-500 hover:bg-blue-100',
+  primary: 'bg-blue-500 text-paper hover:bg-blue-600 active:bg-blue-700',
+  secondary: 'bg-paper text-ink-700 shadow-softer hover:bg-cream-100',
+  ghost: 'bg-transparent text-ink-400 hover:bg-blue-50',
+  muted: 'bg-neutral-badge text-ink-500 hover:bg-cream-100',
 }
 
 export function Button({ variant = 'primary', className = '', ...props }: ButtonProps) {

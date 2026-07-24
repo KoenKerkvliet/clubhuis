@@ -1,58 +1,64 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { AvatarHeader, ProfileTabs } from '@/components/profile/ProfileTabs'
+import { ShieldIcon } from '@/components/ui/icons'
 
-interface OwnStory {
-  id: string
-  text: string
-  visibility: string
-  created_at: string
-}
+const SWATCHES = ['bg-blue-200', 'bg-avatar-green-bg', 'bg-avatar-peach-bg', 'bg-blue-100', 'bg-avatar-sand-bg']
 
 export function Me() {
   const { profile, signOut } = useAuth()
-  const [stories, setStories] = useState<OwnStory[]>([])
+  const [counts, setCounts] = useState({ stories: 0, friends: 0 })
 
   useEffect(() => {
     if (!profile) return
-    supabase
-      .from('stories')
-      .select('id, text, visibility, created_at')
-      .eq('author_id', profile.id)
-      .order('created_at', { ascending: false })
-      .then(({ data }) => setStories(data ?? []))
+    Promise.all([
+      supabase.from('stories').select('id', { count: 'exact', head: true }).eq('author_id', profile.id),
+      supabase
+        .from('friendships')
+        .select('id', { count: 'exact', head: true })
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${profile.id},addressee_id.eq.${profile.id}`),
+    ]).then(([stories, friends]) => {
+      setCounts({ stories: stories.count ?? 0, friends: friends.count ?? 0 })
+    })
   }, [profile])
+
+  if (!profile) return null
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 text-2xl font-bold text-purple-600">
-          {profile?.display_name?.[0]?.toUpperCase()}
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-ink-700">{profile?.display_name}</h1>
-          <p className="text-sm text-ink-500">@{profile?.username}</p>
-        </div>
-      </div>
+      <AvatarHeader
+        displayName={profile.display_name}
+        username={profile.username}
+        meta={`${counts.stories} verhalen · ${counts.friends} vrienden`}
+      />
 
-      <div>
-        <h2 className="mb-2 text-sm font-semibold text-ink-500">Mijn plekje</h2>
-        {stories.length === 0 && (
-          <Card className="text-center text-ink-500">Hier komen jouw eigen verhalen.</Card>
-        )}
-        <div className="flex flex-col gap-3">
-          {stories.map((story) => (
-            <Card key={story.id}>
-              <p className="text-ink-700">{story.text}</p>
-              <p className="mt-2 text-xs text-ink-500">
-                {story.visibility === 'private' ? 'Alleen voor mij' : 'Mijn vrienden'}
-              </p>
-            </Card>
+      <Card>
+        <div className="flex items-center justify-between">
+          <p className="font-extrabold text-ink-900">Mijn mooiste herinneringen</p>
+          <p className="text-sm font-bold text-ink-400">0 van 20</p>
+        </div>
+        <div className="mt-3 flex gap-2.5">
+          {SWATCHES.map((swatch, i) => (
+            <div key={i} className={`h-14 w-14 rounded-squircle ${swatch}`} />
           ))}
         </div>
-      </div>
+      </Card>
+
+      <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn />
+
+      {profile.role === 'beheerder' && (
+        <Link to="/admin">
+          <Button variant="secondary" className="w-full">
+            <ShieldIcon width={18} height={18} />
+            Beheeromgeving
+          </Button>
+        </Link>
+      )}
 
       <Button variant="ghost" onClick={() => signOut()}>
         Uitloggen

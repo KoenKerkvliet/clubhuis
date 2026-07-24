@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
+import { Wordmark } from '@/components/layout/PageHeader'
 
 export function Register() {
   const { signUp } = useAuth()
@@ -42,10 +43,10 @@ export function Register() {
 
   if (done) {
     return (
-      <div className="flex min-h-dvh items-center justify-center bg-blue-50 px-4">
+      <div className="flex min-h-dvh items-center justify-center bg-cream px-4">
         <Card className="max-w-sm text-center">
-          <h1 className="mb-2 text-xl font-bold text-ink-700">Bijna klaar!</h1>
-          <p className="text-ink-500">
+          <h1 className="mb-2 text-xl font-bold text-ink-900">Bijna klaar!</h1>
+          <p className="text-ink-400">
             We hebben je een e-mail gestuurd om je adres te bevestigen. Klik op de link en log
             daarna in — een beheerder keurt je account daarna goed.
           </p>
@@ -55,10 +56,10 @@ export function Register() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-blue-50 px-4 py-10">
+    <div className="flex min-h-dvh items-center justify-center bg-cream px-4 py-10">
       <div className="w-full max-w-sm">
-        <h1 className="mb-1 font-hand text-5xl text-purple-600">Clubhuis</h1>
-        <p className="mb-6 text-ink-500">Jouw eigen plekje, samen met echte vrienden.</p>
+        <Wordmark className="mb-1 text-3xl" />
+        <p className="mb-6 text-ink-400">Jouw eigen plekje, samen met echte vrienden.</p>
         <Card>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Field
@@ -95,15 +96,15 @@ export function Register() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            {error && <p className="text-sm text-aura-600">{error}</p>}
+            {error && <p className="text-sm text-warn-text">{error}</p>}
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Bezig...' : 'Account aanmaken'}
             </Button>
           </form>
         </Card>
-        <p className="mt-4 text-center text-sm text-ink-500">
+        <p className="mt-4 text-center text-sm text-ink-400">
           Heb je al een account?{' '}
-          <Link to="/inloggen" className="font-semibold text-purple-600">
+          <Link to="/inloggen" className="font-extrabold text-blue-500">
             Log in
           </Link>
         </p>
