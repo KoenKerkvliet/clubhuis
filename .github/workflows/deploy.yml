@@ -1,0 +1,45 @@
+name: Deploy naar GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          # Publishable/anon key: bedoeld om publiek in de client te staan, RLS is de
+          # daadwerkelijke beveiliging. Vandaar geen GitHub Secret nodig.
+          VITE_SUPABASE_URL: https://gpcbkbogkjjyhqtiamvh.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_geGGC5skPbmqtyJajk0ZLw_1s5rGna2
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
