@@ -10,6 +10,7 @@ import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ArrowRightIcon, MoreIcon } from '@/components/ui/icons'
 
 const PAGE_SIZE = 20
+const MAX_FAVORITES = 20
 
 interface FeedStory {
   id: string
@@ -18,6 +19,7 @@ interface FeedStory {
   visibility: string
   created_at: string
   author_id: string
+  is_favorite: boolean
   profiles: { username: string; display_name: string; avatar_url: string | null } | null
 }
 
@@ -55,11 +57,26 @@ export function Feed() {
   const [editText, setEditText] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [favoriteCount, setFavoriteCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (profile) loadIncoming()
   }, [profile])
+
+  useEffect(() => {
+    if (profile) loadFavoriteCount()
+  }, [profile])
+
+  async function loadFavoriteCount() {
+    if (!profile) return
+    const { count } = await supabase
+      .from('stories')
+      .select('id', { count: 'exact', head: true })
+      .eq('author_id', profile.id)
+      .eq('is_favorite', true)
+    setFavoriteCount(count ?? 0)
+  }
 
   useEffect(() => {
     if (profile) loadFeed()
@@ -82,7 +99,7 @@ export function Feed() {
     const { data, count } = await supabase
       .from('stories')
       .select(
-        'id, text, photo_path, visibility, created_at, author_id, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
+        'id, text, photo_path, visibility, created_at, author_id, is_favorite, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
         { count: 'exact' },
       )
       .eq('visibility', 'friends')
@@ -138,6 +155,15 @@ export function Feed() {
       setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count + 1, mine: true } }))
       await supabase.from('story_aura').insert({ story_id: storyId, user_id: profile.id })
     }
+  }
+
+  async function toggleFavorite(story: FeedStory) {
+    const nextValue = !story.is_favorite
+    if (nextValue && favoriteCount >= MAX_FAVORITES) return
+
+    setStories((prev) => prev?.map((s) => (s.id === story.id ? { ...s, is_favorite: nextValue } : s)) ?? null)
+    setFavoriteCount((prev) => prev + (nextValue ? 1 : -1))
+    await supabase.from('stories').update({ is_favorite: nextValue }).eq('id', story.id)
   }
 
   async function hideStory(storyId: string) {
@@ -310,6 +336,31 @@ export function Feed() {
                           >
                             Verwijderen
                           </button>
+                          {story.is_favorite ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toggleFavorite(story)
+                                setOpenMenuId(null)
+                              }}
+                              className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                            >
+                              Verwijder uit mooiste herinneringen
+                            </button>
+                          ) : favoriteCount >= MAX_FAVORITES ? (
+                            <p className="px-3 py-2 text-left text-sm font-bold text-ink-400">Max. 20 bereikt</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                toggleFavorite(story)
+                                setOpenMenuId(null)
+                              }}
+                              className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                            >
+                              Voeg toe aan mooiste herinneringen
+                            </button>
+                          )}
                         </>
                       ) : (
                         <button

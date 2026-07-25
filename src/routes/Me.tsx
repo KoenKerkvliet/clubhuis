@@ -4,16 +4,18 @@ import { supabase } from '@/lib/supabase'
 import { resizeImageToWebp } from '@/lib/image'
 import { Card } from '@/components/ui/Card'
 import { AvatarHeader, ProfileTabs } from '@/components/profile/ProfileTabs'
+import { FavoriteMemoryThumb } from '@/components/story/FavoriteMemoryThumb'
 
-const SWATCHES = ['bg-blue-200', 'bg-avatar-green-bg', 'bg-avatar-peach-bg', 'bg-blue-100', 'bg-avatar-sand-bg']
 const AVATAR_MAX_DIMENSION = 500
 const AVATAR_QUALITY = 0.8
+const MAX_FAVORITES = 20
 
 export function Me() {
   const { profile, refreshProfile } = useAuth()
   const [counts, setCounts] = useState({ stories: 0, friends: 0 })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const [favorites, setFavorites] = useState<{ id: string; photo_path: string | null }[] | null>(null)
 
   useEffect(() => {
     if (!profile) return
@@ -28,6 +30,21 @@ export function Me() {
       setCounts({ stories: stories.count ?? 0, friends: friends.count ?? 0 })
     })
   }, [profile])
+
+  useEffect(() => {
+    if (profile) loadFavorites()
+  }, [profile])
+
+  async function loadFavorites() {
+    if (!profile) return
+    const { data } = await supabase
+      .from('stories')
+      .select('id, photo_path')
+      .eq('author_id', profile.id)
+      .eq('is_favorite', true)
+      .order('created_at', { ascending: false })
+    setFavorites(data ?? [])
+  }
 
   async function handleAvatarChange(file: File) {
     if (!profile) return
@@ -71,16 +88,21 @@ export function Me() {
       <Card>
         <div className="flex items-center justify-between">
           <p className="font-extrabold text-ink-900">Mijn mooiste herinneringen</p>
-          <p className="text-sm font-bold text-ink-400">0 van 20</p>
+          <p className="text-sm font-bold text-ink-400">{favorites?.length ?? 0} van {MAX_FAVORITES}</p>
         </div>
-        <div className="mt-3 flex gap-2.5">
-          {SWATCHES.map((swatch, i) => (
-            <div key={i} className={`h-14 w-14 rounded-squircle ${swatch}`} />
+        <div className="mt-3 flex flex-wrap gap-2.5">
+          {favorites?.length === 0 && (
+            <p className="text-sm text-ink-400">
+              Nog geen herinneringen gekozen — markeer een verhaal via de puntjes bij "Verhalen".
+            </p>
+          )}
+          {favorites?.map((story) => (
+            <FavoriteMemoryThumb key={story.id} id={story.id} photoPath={story.photo_path} />
           ))}
         </div>
       </Card>
 
-      <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn />
+      <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn onFavoriteChange={loadFavorites} />
     </div>
   )
 }

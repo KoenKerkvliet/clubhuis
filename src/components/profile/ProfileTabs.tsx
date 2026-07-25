@@ -11,6 +11,8 @@ import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ContactsPanel } from '@/components/friends/ContactsPanel'
 import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/icons'
 
+const MAX_FAVORITES = 20
+
 type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels' | 'vrienden'
 
 interface Story {
@@ -19,6 +21,7 @@ interface Story {
   photo_path: string | null
   visibility: string
   created_at: string
+  is_favorite: boolean
 }
 
 interface Question {
@@ -53,7 +56,18 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString('nl-NL', { month: 'long' })
 }
 
-export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: string; displayName: string; isOwn: boolean }) {
+export function ProfileTabs({
+  profileId,
+  displayName,
+  isOwn,
+  onFavoriteChange,
+}: {
+  profileId: string
+  displayName: string
+  isOwn: boolean
+  /** Alleen relevant op de eigen pagina: laat Me.tsx het "mooiste herinneringen"-kaartje verversen. */
+  onFavoriteChange?: () => void
+}) {
   const { profile: viewer } = useAuth()
   const [tab, setTab] = useState<Tab>('verhalen')
   const [stories, setStories] = useState<Story[] | null>(null)
@@ -89,7 +103,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setStories(null)
     const { data } = await supabase
       .from('stories')
-      .select('id, text, photo_path, visibility, created_at')
+      .select('id, text, photo_path, visibility, created_at, is_favorite')
       .eq('author_id', profileId)
       .order('created_at', { ascending: false })
     const rows = data ?? []
@@ -126,6 +140,15 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
       setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count + 1, mine: true } }))
       await supabase.from('story_aura').insert({ story_id: storyId, user_id: viewer.id })
     }
+  }
+
+  async function toggleFavorite(story: Story) {
+    const nextValue = !story.is_favorite
+    if (nextValue && (stories?.filter((s) => s.is_favorite).length ?? 0) >= MAX_FAVORITES) return
+
+    setStories((prev) => prev?.map((s) => (s.id === story.id ? { ...s, is_favorite: nextValue } : s)) ?? null)
+    await supabase.from('stories').update({ is_favorite: nextValue }).eq('id', story.id)
+    onFavoriteChange?.()
   }
 
   async function loadVriendenboekje() {
@@ -209,6 +232,8 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   ]
   if (isOwn) tabOptions.push({ value: 'vrienden', label: 'Vrienden' })
 
+  const favoriteCount = stories?.filter((s) => s.is_favorite).length ?? 0
+
   return (
     <div className="flex flex-col gap-4">
       <SegmentedTabs value={tab} onChange={setTab} options={tabOptions} />
@@ -260,6 +285,31 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
                       >
                         Verwijderen
                       </button>
+                      {story.is_favorite ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleFavorite(story)
+                            setOpenMenuId(null)
+                          }}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                        >
+                          Verwijder uit mooiste herinneringen
+                        </button>
+                      ) : favoriteCount >= MAX_FAVORITES ? (
+                        <p className="px-3 py-2 text-left text-sm font-bold text-ink-400">Max. 20 bereikt</p>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            toggleFavorite(story)
+                            setOpenMenuId(null)
+                          }}
+                          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                        >
+                          Voeg toe aan mooiste herinneringen
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -372,6 +372,7 @@ export type Database = {
           author_id: string
           created_at: string
           id: string
+          is_favorite: boolean
           photo_path: string | null
           text: string
           visibility: string
@@ -380,6 +381,7 @@ export type Database = {
           author_id: string
           created_at?: string
           id?: string
+          is_favorite?: boolean
           photo_path?: string | null
           text: string
           visibility?: string
@@ -388,6 +390,7 @@ export type Database = {
           author_id?: string
           created_at?: string
           id?: string
+          is_favorite?: boolean
           photo_path?: string | null
           text?: string
           visibility?: string
