@@ -90,6 +90,8 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const [newScribble, setNewScribble] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [editingScribbleId, setEditingScribbleId] = useState<string | null>(null)
+  const [editScribbleText, setEditScribbleText] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -280,6 +282,49 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setReplyingTo(null)
     await supabase.from('scribbles').insert({ profile_id: profileId, author_id: viewer.id, text, parent_id: parentId })
     loadScribbles()
+  }
+
+  const SCRIBBLE_EDIT_WINDOW_MS = 30 * 60 * 1000
+
+  function canEditScribble(s: Scribble) {
+    return viewer?.id === s.author_id && Date.now() - new Date(s.created_at).getTime() < SCRIBBLE_EDIT_WINDOW_MS
+  }
+
+  function startEditScribble(s: Scribble) {
+    setEditingScribbleId(s.id)
+    setEditScribbleText(s.text)
+    setReplyingTo(null)
+  }
+
+  async function saveScribbleEdit(id: string) {
+    const trimmed = editScribbleText.trim()
+    if (!trimmed) return
+    await supabase.from('scribbles').update({ text: trimmed }).eq('id', id)
+    setScribbles((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed } : s)) ?? null)
+    setEditingScribbleId(null)
+  }
+
+  function renderScribbleEditor(id: string) {
+    return (
+      <div className="flex flex-col gap-2">
+        <textarea
+          className="w-full resize-none rounded-2xl border-none bg-paper/70 p-3 text-ink-900 outline-none"
+          rows={2}
+          maxLength={500}
+          value={editScribbleText}
+          onChange={(e) => setEditScribbleText(e.target.value)}
+          autoFocus
+        />
+        <div className="flex gap-2">
+          <Button onClick={() => saveScribbleEdit(id)} disabled={!editScribbleText.trim()}>
+            Opslaan
+          </Button>
+          <Button variant="muted" onClick={() => setEditingScribbleId(null)}>
+            Annuleren
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   function startEdit(story: Story) {
@@ -546,26 +591,58 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
             .reverse()
             .map((s, i) => (
               <div key={s.id} className={`rounded-card p-5 ${SCRIBBLE_STYLES[i % SCRIBBLE_STYLES.length]}`}>
-                <p className="font-hand text-2xl leading-snug">{s.text}</p>
-                <div className="mt-2 flex items-center gap-3">
-                  <p className="text-sm font-extrabold opacity-80">
-                    {s.author?.display_name ?? 'Iemand'} · {timeAgo(s.created_at)}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setReplyingTo(replyingTo === s.id ? null : s.id)}
-                    className="text-sm font-extrabold underline opacity-80"
-                  >
-                    Reageren
-                  </button>
-                </div>
+                {editingScribbleId === s.id ? (
+                  renderScribbleEditor(s.id)
+                ) : (
+                  <>
+                    <p className="font-hand text-2xl leading-snug">{s.text}</p>
+                    <div className="mt-2 flex items-center gap-3">
+                      <p className="text-sm font-extrabold opacity-80">
+                        {s.author?.display_name ?? 'Iemand'} · {timeAgo(s.created_at)}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(replyingTo === s.id ? null : s.id)}
+                        className="text-sm font-extrabold underline opacity-80"
+                      >
+                        Reageren
+                      </button>
+                      {canEditScribble(s) && (
+                        <button
+                          type="button"
+                          onClick={() => startEditScribble(s)}
+                          className="text-sm font-extrabold underline opacity-80"
+                        >
+                          Bewerken
+                        </button>
+                      )}
+                    </div>
+                  </>
+                )}
 
                 {(repliesByParent[s.id] ?? []).map((r) => (
                   <div key={r.id} className="ml-4 mt-3 rounded-2xl bg-paper/60 p-3">
-                    <p className="text-ink-700">{r.text}</p>
-                    <p className="mt-1 text-xs font-bold opacity-70">
-                      {r.author?.display_name ?? 'Iemand'} · {timeAgo(r.created_at)}
-                    </p>
+                    {editingScribbleId === r.id ? (
+                      renderScribbleEditor(r.id)
+                    ) : (
+                      <>
+                        <p className="text-ink-700">{r.text}</p>
+                        <div className="mt-1 flex items-center gap-3">
+                          <p className="text-xs font-bold opacity-70">
+                            {r.author?.display_name ?? 'Iemand'} · {timeAgo(r.created_at)}
+                          </p>
+                          {canEditScribble(r) && (
+                            <button
+                              type="button"
+                              onClick={() => startEditScribble(r)}
+                              className="text-xs font-bold underline opacity-70"
+                            >
+                              Bewerken
+                            </button>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
 
