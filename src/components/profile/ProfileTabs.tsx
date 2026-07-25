@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
@@ -7,9 +8,10 @@ import { Button } from '@/components/ui/Button'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { AuraPill, PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
-import { ArrowRightIcon, CameraIcon } from '@/components/ui/icons'
+import { ContactsPanel } from '@/components/friends/ContactsPanel'
+import { ArrowRightIcon, CameraIcon, PlusIcon } from '@/components/ui/icons'
 
-type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels'
+type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels' | 'vrienden'
 
 interface Story {
   id: string
@@ -36,6 +38,7 @@ interface Scribble {
   profile_id: string
   text: string
   created_at: string
+  parent_id: string | null
   author: { display_name: string } | null
 }
 
@@ -62,6 +65,8 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const [answers, setAnswers] = useState<Answer[]>([])
   const [scribbles, setScribbles] = useState<Scribble[] | null>(null)
   const [newScribble, setNewScribble] = useState('')
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
 
   useEffect(() => {
     if (tab === 'verhalen') loadStories()
@@ -125,9 +130,9 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setScribbles(null)
     const { data } = await supabase
       .from('scribbles')
-      .select('id, author_id, profile_id, text, created_at, author:profiles!scribbles_author_id_fkey(display_name)')
+      .select('id, author_id, profile_id, text, created_at, parent_id, author:profiles!scribbles_author_id_fkey(display_name)')
       .eq('profile_id', profileId)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: true })
     setScribbles((data as unknown as Scribble[]) ?? [])
   }
 
@@ -145,6 +150,15 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     const text = newScribble.trim()
     setNewScribble('')
     await supabase.from('scribbles').insert({ profile_id: profileId, author_id: viewer.id, text })
+    loadScribbles()
+  }
+
+  async function sendReply(parentId: string) {
+    if (!viewer || !replyText.trim()) return
+    const text = replyText.trim()
+    setReplyText('')
+    setReplyingTo(null)
+    await supabase.from('scribbles').insert({ profile_id: profileId, author_id: viewer.id, text, parent_id: parentId })
     loadScribbles()
   }
 
@@ -171,20 +185,34 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setConfirmingDeleteId(null)
   }
 
+  const topLevelScribbles = scribbles?.filter((s) => !s.parent_id) ?? null
+  const repliesByParent: Record<string, Scribble[]> = {}
+  for (const s of scribbles ?? []) {
+    if (s.parent_id) (repliesByParent[s.parent_id] ??= []).push(s)
+  }
+
+  const tabOptions: { value: Tab; label: string }[] = [
+    { value: 'verhalen', label: 'Verhalen' },
+    { value: 'vriendenboekje', label: 'Vriendenboekje' },
+    { value: 'krabbels', label: 'Krabbels' },
+  ]
+  if (isOwn) tabOptions.push({ value: 'vrienden', label: 'Vrienden' })
+
   return (
     <div className="flex flex-col gap-4">
-      <SegmentedTabs
-        value={tab}
-        onChange={setTab}
-        options={[
-          { value: 'verhalen', label: 'Verhalen' },
-          { value: 'vriendenboekje', label: 'Vriendenboekje' },
-          { value: 'krabbels', label: 'Krabbels' },
-        ]}
-      />
+      <SegmentedTabs value={tab} onChange={setTab} options={tabOptions} />
 
       {tab === 'verhalen' && (
         <div className="flex flex-col gap-3">
+          {isOwn && (
+            <Link to="/vertellen">
+              <Button variant="secondary" className="w-full justify-start px-5">
+                <PlusIcon width={18} height={18} />
+                Verhaal vertellen
+              </Button>
+            </Link>
+          )}
+
           {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
           {stories?.length === 0 && <Card className="text-center text-ink-400">Nog geen verhalen.</Card>}
           {stories?.map((story) => (
@@ -310,17 +338,61 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
           )}
 
           {scribbles === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
-          {scribbles?.length === 0 && <Card className="text-center text-ink-400">Nog geen krabbels.</Card>}
-          {scribbles?.map((s, i) => (
-            <div key={s.id} className={`rounded-card p-5 ${SCRIBBLE_STYLES[i % SCRIBBLE_STYLES.length]}`}>
-              <p className="font-hand text-2xl leading-snug">{s.text}</p>
-              <p className="mt-2 text-sm font-extrabold opacity-80">
-                {s.author?.display_name ?? 'Iemand'} · {timeAgo(s.created_at)}
-              </p>
-            </div>
-          ))}
+          {topLevelScribbles?.length === 0 && <Card className="text-center text-ink-400">Nog geen krabbels.</Card>}
+          {topLevelScribbles
+            ?.slice()
+            .reverse()
+            .map((s, i) => (
+              <div key={s.id} className={`rounded-card p-5 ${SCRIBBLE_STYLES[i % SCRIBBLE_STYLES.length]}`}>
+                <p className="font-hand text-2xl leading-snug">{s.text}</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <p className="text-sm font-extrabold opacity-80">
+                    {s.author?.display_name ?? 'Iemand'} · {timeAgo(s.created_at)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setReplyingTo(replyingTo === s.id ? null : s.id)}
+                    className="text-sm font-extrabold underline opacity-80"
+                  >
+                    Reageren
+                  </button>
+                </div>
+
+                {(repliesByParent[s.id] ?? []).map((r) => (
+                  <div key={r.id} className="ml-4 mt-3 rounded-2xl bg-paper/60 p-3">
+                    <p className="text-ink-700">{r.text}</p>
+                    <p className="mt-1 text-xs font-bold opacity-70">
+                      {r.author?.display_name ?? 'Iemand'} · {timeAgo(r.created_at)}
+                    </p>
+                  </div>
+                ))}
+
+                {replyingTo === s.id && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <input
+                      className="w-full rounded-full bg-paper/70 px-4 py-2 text-ink-700 outline-none placeholder:text-ink-400/60"
+                      placeholder="Schrijf een reactie..."
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && sendReply(s.id)}
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => sendReply(s.id)}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-paper"
+                      aria-label="Verstuur reactie"
+                    >
+                      <ArrowRightIcon width={16} height={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
         </div>
       )}
+
+      {tab === 'vrienden' && <ContactsPanel />}
     </div>
   )
 }

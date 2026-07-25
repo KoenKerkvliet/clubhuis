@@ -11,6 +11,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -267,6 +269,7 @@ export type Database = {
           author_id: string
           created_at: string
           id: string
+          parent_id: string | null
           profile_id: string
           text: string
         }
@@ -274,6 +277,7 @@ export type Database = {
           author_id: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           profile_id: string
           text: string
         }
@@ -281,6 +285,7 @@ export type Database = {
           author_id?: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           profile_id?: string
           text?: string
         }
@@ -297,6 +302,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scribbles_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "scribbles"
             referencedColumns: ["id"]
           },
           {
@@ -472,6 +484,7 @@ export type Database = {
       clubhuis_is_open: { Args: { p_role: string }; Returns: boolean }
       current_role_open: { Args: never; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
+      is_profile_active: { Args: { p_id: string }; Returns: boolean }
       notify: {
         Args: { p_payload: Json; p_type: string; p_user_id: string }
         Returns: undefined

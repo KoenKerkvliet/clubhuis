@@ -28,6 +28,7 @@ interface Actors {
 const ICONS: Record<string, { Icon: typeof AuraIcon; bg: string; text: string }> = {
   aura: { Icon: AuraIcon, bg: 'bg-aura-soft', text: 'text-aura-text' },
   scribble: { Icon: PencilIcon, bg: 'bg-aura-soft', text: 'text-aura-text' },
+  scribble_reply: { Icon: PencilIcon, bg: 'bg-aura-soft', text: 'text-aura-text' },
   comment: { Icon: CommentIcon, bg: 'bg-avatar-green-bg', text: 'text-avatar-green-text' },
 }
 
@@ -87,6 +88,8 @@ export function Notifications() {
         return { actor, rest: 'gaf Aura aan je verhaal.' }
       case 'scribble':
         return { actor, rest: 'schreef een krabbel op je plekje.' }
+      case 'scribble_reply':
+        return { actor, rest: 'reageerde op je krabbel.' }
       case 'comment':
         return { actor, rest: 'reageerde op je verhaal.' }
       case 'friend_accepted':

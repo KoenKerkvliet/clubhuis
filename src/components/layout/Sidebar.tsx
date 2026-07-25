@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { FriendsIcon, MeIcon, TellIcon } from '@/components/ui/icons'
+import { FriendsIcon, MeIcon } from '@/components/ui/icons'
 import { LogoMark } from '@/components/ui/LogoMark'
 
 function SidebarLink({ to, label, Icon }: { to: string; label: string; Icon: typeof MeIcon }) {
@@ -29,15 +29,6 @@ export function Sidebar() {
       </NavLink>
 
       <SidebarLink to="/ik" label="Ik" Icon={MeIcon} />
-
-      <NavLink
-        to="/vertellen"
-        className="my-2 flex items-center gap-3 rounded-squircle bg-blue-500 px-4 py-3 text-sm font-extrabold text-paper transition-transform active:scale-95"
-      >
-        <TellIcon width={20} height={20} />
-        Vertellen
-      </NavLink>
-
       <SidebarLink to="/vrienden" label="Vrienden" Icon={FriendsIcon} />
     </aside>
   )
