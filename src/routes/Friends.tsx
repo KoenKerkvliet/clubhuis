@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -26,6 +25,7 @@ export function Friends() {
   const { profile } = useAuth()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ProfileCard[]>([])
+  const [searching, setSearching] = useState(false)
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
   const [incoming, setIncoming] = useState<IncomingRequest[]>([])
   const [friends, setFriends] = useState<{ id: string; display_name: string; username: string }[]>([])
@@ -68,19 +68,32 @@ export function Friends() {
     )
   }
 
-  async function handleSearch(e: FormEvent) {
-    e.preventDefault()
-    if (!query.trim()) return
-    const { data } = await supabase
-      .from('profile_cards')
-      .select('*')
-      .ilike('username', `%${query.trim().toLowerCase()}%`)
-      .neq('id', profile?.id ?? '')
-      .limit(15)
-    // profile_cards is een view op profiles (id/username/display_name zijn daar NOT NULL);
-    // Supabase's codegen markeert view-kolommen desondanks als nullable.
-    setResults((data ?? []) as ProfileCard[])
-  }
+  // Live zoeken terwijl je typt (met een korte pauze) in plaats van pas na Enter: anders
+  // lijkt het scherm het simpelweg niet te doen, zonder zichtbare zoekknop.
+  useEffect(() => {
+    const trimmed = query.trim().toLowerCase()
+    if (trimmed.length < 2) {
+      setResults([])
+      setSearching(false)
+      return
+    }
+
+    setSearching(true)
+    const timeout = setTimeout(async () => {
+      const { data } = await supabase
+        .from('profile_cards')
+        .select('*')
+        .ilike('username', `%${trimmed}%`)
+        .neq('id', profile?.id ?? '')
+        .limit(15)
+      // profile_cards is een view op profiles (id/username/display_name zijn daar NOT NULL);
+      // Supabase's codegen markeert view-kolommen desondanks als nullable.
+      setResults((data ?? []) as ProfileCard[])
+      setSearching(false)
+    }, 300)
+
+    return () => clearTimeout(timeout)
+  }, [query, profile?.id])
 
   async function sendRequest(addresseeId: string) {
     if (!profile) return
@@ -98,17 +111,15 @@ export function Friends() {
     <div className="flex flex-col gap-5">
       <BigTitle>Vrienden</BigTitle>
 
-      <form onSubmit={handleSearch}>
-        <div className="flex items-center gap-2 rounded-pill bg-paper px-4 py-3 shadow-softer">
-          <SearchIcon width={18} height={18} className="text-ink-400" />
-          <input
-            className="w-full bg-transparent text-ink-700 outline-none placeholder:text-ink-400/60"
-            placeholder="Zoek op gebruikersnaam"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-        </div>
-      </form>
+      <div className="flex items-center gap-2 rounded-pill bg-paper px-4 py-3 shadow-softer">
+        <SearchIcon width={18} height={18} className="text-ink-400" />
+        <input
+          className="w-full bg-transparent text-ink-700 outline-none placeholder:text-ink-400/60"
+          placeholder="Zoek op gebruikersnaam"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
 
       {incoming.map((req) => (
         <div key={req.id} className="rounded-card bg-blue-100 p-5">
@@ -129,8 +140,12 @@ export function Friends() {
         </div>
       ))}
 
-      {results.length > 0 && (
+      {query.trim().length >= 2 && (
         <div className="flex flex-col gap-2.5">
+          {searching && <p className="text-sm text-ink-400">Even zoeken...</p>}
+          {!searching && results.length === 0 && (
+            <Card className="text-center text-ink-400">Niemand gevonden met die gebruikersnaam.</Card>
+          )}
           {results.map((r) => (
             <Card key={r.id} className="flex items-center gap-3">
               <Avatar name={r.display_name} size={44} />
