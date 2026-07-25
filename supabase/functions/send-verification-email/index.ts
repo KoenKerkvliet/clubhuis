@@ -1,18 +1,13 @@
-// Stuurt een wachtwoordherstel-mail namens de beheerder.
+// Vervangt Supabase's ingebouwde (traaggelimiteerde) bevestigingsmail bij registratie.
+// Maakt het account server-side aan via generateLink en verstuurt de link zelf via emailit.
+// Werkt ook voor "stuur opnieuw": als het account al bestaat maar nog niet bevestigd is,
+// geeft generateLink gewoon een nieuwe link voor datzelfde account terug.
 //
-// Waarom een edge function en niet gewoon vanuit de browser: het e-mailadres van een
-// gebruiker hoort volgens de blueprint volledig buiten de app te blijven. Door de opzoeking
-// hier server-side met de service role te doen, ziet de beheerder-client nooit een adres —
-// die stuurt alleen een profile_id mee. Verstuurt via emailit i.p.v. Supabase's eigen
-// (traaggelimiteerde) mailer.
+// emailit-helper staat hier bewust inline (niet in een gedeeld bestand): cross-function
+// relative imports bleken niet op te lossen in de manier waarop deze functions gedeployed
+// worden, en het is toch al maar een paar regels per keer.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-const ALLOWED_REDIRECTS = [
-  'https://clubhuis.eu/',
-  'https://koenkerkvliet.github.io/clubhuis/',
-  'http://localhost:5173/',
-]
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -68,7 +63,7 @@ function json(body: unknown, status = 200) {
   })
 }
 
-function resetEmailHtml(link: string) {
+function verificationEmailHtml(link: string, name: string) {
   return `<!DOCTYPE html>
 <html lang="nl">
 <head>
@@ -78,11 +73,11 @@ function resetEmailHtml(link: string) {
 <meta name="x-apple-disable-message-reformatting">
 <meta name="color-scheme" content="light">
 <meta name="supported-color-schemes" content="light">
-<title>Wachtwoord opnieuw instellen</title>
+<title>Bevestig je e-mailadres</title>
 </head>
 <body style="margin:0;padding:0;background:#F7F4EF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
 <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#F7F4EF;opacity:0;">
-  Een beheerder heeft een nieuw wachtwoord voor je aangevraagd.
+  Nog één stap: bevestig je e-mailadres om te starten met Clubhuis.
 </div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#F7F4EF" style="background:#F7F4EF;">
 <tr><td align="center" style="padding:32px 16px;">
@@ -94,15 +89,15 @@ function resetEmailHtml(link: string) {
   </tr>
   <tr>
     <td style="padding:32px;color:#231F38;font-size:16px;line-height:1.6;">
-      <p style="margin:0 0 16px;">Hoi,</p>
+      <p style="margin:0 0 16px;">Hoi ${name},</p>
       <p style="margin:0 0 24px;">
-        Een beheerder heeft namens jou een nieuw wachtwoord voor je Clubhuis-account
-        aangevraagd. Klik op de knop hieronder om een nieuw wachtwoord te kiezen.
+        Welkom bij Clubhuis! Klik op de knop hieronder om je e-mailadres te bevestigen.
+        Daarna bekijkt een beheerder je account, en kun je daarna in.
       </p>
       <table role="presentation" cellpadding="0" cellspacing="0">
         <tr>
           <td bgcolor="#3F739F" style="border-radius:999px;">
-            <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;">Kies nieuw wachtwoord</a>
+            <a href="${link}" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;">Bevestig e-mailadres</a>
           </td>
         </tr>
       </table>
@@ -124,10 +119,10 @@ function resetEmailHtml(link: string) {
 </html>`
 }
 
-function resetEmailText(link: string) {
-  return `Hoi,
+function verificationEmailText(link: string, name: string) {
+  return `Hoi ${name},
 
-Een beheerder heeft namens jou een nieuw wachtwoord voor je Clubhuis-account aangevraagd. Kies via de link hieronder een nieuw wachtwoord.
+Welkom bij Clubhuis! Bevestig je e-mailadres via de link hieronder. Daarna bekijkt een beheerder je account, en kun je daarna in.
 
 ${link}
 
@@ -138,77 +133,64 @@ Clubhuis
 (c) ${new Date().getFullYear()} Clubhuis | clubhuis.eu`
 }
 
+interface RequestBody {
+  email?: string
+  password?: string
+  username?: string
+  display_name?: string
+  redirectTo?: string
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-  const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader) return json({ error: 'Niet ingelogd.' }, 401)
-
-  // 1. Wie vraagt dit aan?
-  const callerClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-  const { data: caller, error: callerError } = await callerClient.auth.getUser()
-  if (callerError || !caller.user) return json({ error: 'Niet ingelogd.' }, 401)
-
-  const admin = createClient(supabaseUrl, serviceKey)
-
-  // 2. Is dat echt een beheerder?
-  const { data: callerProfile } = await admin
-    .from('profiles')
-    .select('role')
-    .eq('id', caller.user.id)
-    .maybeSingle()
-
-  if (callerProfile?.role !== 'beheerder') {
-    return json({ error: 'Alleen een beheerder mag dit doen.' }, 403)
-  }
-
-  // 3. Van wie moet het wachtwoord hersteld worden?
-  let body: { profile_id?: string; redirect_to?: string }
+  let body: RequestBody
   try {
     body = await req.json()
   } catch {
     return json({ error: 'Ongeldig verzoek.' }, 400)
   }
 
-  if (!body.profile_id) return json({ error: 'profile_id ontbreekt.' }, 400)
+  const email = body.email?.trim().toLowerCase()
+  if (!email) return json({ error: 'E-mailadres ontbreekt.' }, 400)
 
-  const redirectTo = ALLOWED_REDIRECTS.includes(body.redirect_to ?? '') ? body.redirect_to : ALLOWED_REDIRECTS[0]
-
-  const { data: target, error: targetError } = await admin.auth.admin.getUserById(body.profile_id)
-  if (targetError || !target.user?.email) {
-    return json({ error: 'Deze gebruiker is niet gevonden.' }, 404)
+  if (body.username && !/^[a-z0-9_]{3,20}$/.test(body.username)) {
+    return json({ error: 'Gebruikersnaam mag alleen kleine letters, cijfers en _ bevatten (3-20 tekens).' }, 400)
   }
 
-  // 4. Genereer de herstel-link server-side en stuur 'm via emailit. Het adres blijft
-  //    binnen deze function — de beheerder-client ziet het nooit.
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
-    type: 'recovery',
-    email: target.user.email,
-    options: { redirectTo },
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+
+  const { data, error } = await admin.auth.admin.generateLink({
+    type: 'signup',
+    email,
+    // @ts-ignore -- password is optioneel wanneer het account al bestaat (resend-pad).
+    password: body.password,
+    options: {
+      data: body.username
+        ? { username: body.username, display_name: body.display_name || body.username }
+        : undefined,
+      redirectTo: body.redirectTo,
+    },
   })
 
-  if (linkError || !link?.properties?.action_link) {
-    return json({ error: linkError?.message ?? 'Kon geen herstel-link genereren.' }, 500)
+  if (error || !data?.properties?.action_link) {
+    return json({ error: error?.message ?? 'Registreren lukte niet.' }, 400)
   }
+
+  const name = (data.user?.user_metadata?.display_name as string | undefined) || body.display_name || 'daar'
 
   try {
     await sendEmail({
-      to: target.user.email,
-      subject: 'Wachtwoord opnieuw instellen',
-      html: resetEmailHtml(link.properties.action_link),
-      text: resetEmailText(link.properties.action_link),
+      to: email,
+      subject: 'Bevestig je e-mailadres',
+      html: verificationEmailHtml(data.properties.action_link, name),
+      text: verificationEmailText(data.properties.action_link, name),
     })
   } catch (err) {
     console.error('emailit send failed', err)
-    return json({ error: 'De mail kon niet worden verstuurd.' }, 500)
+    return json({ error: 'De bevestigingsmail kon niet worden verstuurd. Probeer het nog eens.' }, 500)
   }
 
-  return json({ ok: true })
+  return json({ success: true })
 })

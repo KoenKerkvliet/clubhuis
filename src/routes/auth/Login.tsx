@@ -1,15 +1,14 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { useAuth, RESET_REDIRECT_URL } from '@/context/AuthContext'
-import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
 import { Wordmark } from '@/components/layout/PageHeader'
 
 export function Login() {
-  const { signIn } = useAuth()
+  const { signIn, resendVerification } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -37,11 +36,7 @@ export function Login() {
 
   async function resendConfirmation() {
     setResendState('sending')
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email,
-      options: { emailRedirectTo: RESET_REDIRECT_URL },
-    })
+    const { error } = await resendVerification(email)
     setResendState(error ? 'idle' : 'sent')
   }
 

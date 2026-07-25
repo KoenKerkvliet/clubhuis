@@ -1,18 +1,10 @@
-// Stuurt een wachtwoordherstel-mail namens de beheerder.
+// Vervangt supabase.auth.resetPasswordForEmail(). Geeft altijd hetzelfde antwoord terug,
+// ongeacht of het adres bestaat — anders kun je via deze route uitvinden welke
+// e-mailadressen bij Clubhuis geregistreerd staan.
 //
-// Waarom een edge function en niet gewoon vanuit de browser: het e-mailadres van een
-// gebruiker hoort volgens de blueprint volledig buiten de app te blijven. Door de opzoeking
-// hier server-side met de service role te doen, ziet de beheerder-client nooit een adres —
-// die stuurt alleen een profile_id mee. Verstuurt via emailit i.p.v. Supabase's eigen
-// (traaggelimiteerde) mailer.
+// emailit-helper staat bewust inline, zie send-verification-email/index.ts voor uitleg.
 
 import { createClient } from 'jsr:@supabase/supabase-js@2'
-
-const ALLOWED_REDIRECTS = [
-  'https://clubhuis.eu/',
-  'https://koenkerkvliet.github.io/clubhuis/',
-  'http://localhost:5173/',
-]
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,7 +74,7 @@ function resetEmailHtml(link: string) {
 </head>
 <body style="margin:0;padding:0;background:#F7F4EF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
 <div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#F7F4EF;opacity:0;">
-  Een beheerder heeft een nieuw wachtwoord voor je aangevraagd.
+  Kies een nieuw wachtwoord voor je Clubhuis-account.
 </div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#F7F4EF" style="background:#F7F4EF;">
 <tr><td align="center" style="padding:32px 16px;">
@@ -96,8 +88,8 @@ function resetEmailHtml(link: string) {
     <td style="padding:32px;color:#231F38;font-size:16px;line-height:1.6;">
       <p style="margin:0 0 16px;">Hoi,</p>
       <p style="margin:0 0 24px;">
-        Een beheerder heeft namens jou een nieuw wachtwoord voor je Clubhuis-account
-        aangevraagd. Klik op de knop hieronder om een nieuw wachtwoord te kiezen.
+        Er is een nieuw wachtwoord aangevraagd voor jouw Clubhuis-account. Klik op de knop
+        hieronder om een nieuw wachtwoord te kiezen.
       </p>
       <table role="presentation" cellpadding="0" cellspacing="0">
         <tr>
@@ -107,6 +99,9 @@ function resetEmailHtml(link: string) {
         </tr>
       </table>
       <p style="margin:24px 0 0;font-size:13px;color:#6A6378;">
+        Vroeg jij dit niet aan? Dan kun je deze mail gewoon negeren — er verandert niets.
+      </p>
+      <p style="margin:16px 0 0;font-size:13px;color:#6A6378;">
         Werkt de knop niet? Kopieer deze link in je browser:<br>
         <a href="${link}" style="color:#3F739F;word-break:break-all;">${link}</a>
       </p>
@@ -127,9 +122,11 @@ function resetEmailHtml(link: string) {
 function resetEmailText(link: string) {
   return `Hoi,
 
-Een beheerder heeft namens jou een nieuw wachtwoord voor je Clubhuis-account aangevraagd. Kies via de link hieronder een nieuw wachtwoord.
+Er is een nieuw wachtwoord aangevraagd voor jouw Clubhuis-account. Kies via de link hieronder een nieuw wachtwoord.
 
 ${link}
+
+Vroeg jij dit niet aan? Dan kun je deze mail gewoon negeren, er verandert niets.
 
 Met vriendelijke groet,
 Clubhuis
@@ -138,77 +135,46 @@ Clubhuis
 (c) ${new Date().getFullYear()} Clubhuis | clubhuis.eu`
 }
 
+interface RequestBody {
+  email?: string
+  redirectTo?: string
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
-  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
-  const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-
-  const authHeader = req.headers.get('Authorization') ?? ''
-  if (!authHeader) return json({ error: 'Niet ingelogd.' }, 401)
-
-  // 1. Wie vraagt dit aan?
-  const callerClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: authHeader } },
-  })
-  const { data: caller, error: callerError } = await callerClient.auth.getUser()
-  if (callerError || !caller.user) return json({ error: 'Niet ingelogd.' }, 401)
-
-  const admin = createClient(supabaseUrl, serviceKey)
-
-  // 2. Is dat echt een beheerder?
-  const { data: callerProfile } = await admin
-    .from('profiles')
-    .select('role')
-    .eq('id', caller.user.id)
-    .maybeSingle()
-
-  if (callerProfile?.role !== 'beheerder') {
-    return json({ error: 'Alleen een beheerder mag dit doen.' }, 403)
-  }
-
-  // 3. Van wie moet het wachtwoord hersteld worden?
-  let body: { profile_id?: string; redirect_to?: string }
+  let body: RequestBody
   try {
     body = await req.json()
   } catch {
     return json({ error: 'Ongeldig verzoek.' }, 400)
   }
 
-  if (!body.profile_id) return json({ error: 'profile_id ontbreekt.' }, 400)
+  const email = body.email?.trim().toLowerCase()
+  if (!email) return json({ error: 'E-mailadres ontbreekt.' }, 400)
 
-  const redirectTo = ALLOWED_REDIRECTS.includes(body.redirect_to ?? '') ? body.redirect_to : ALLOWED_REDIRECTS[0]
+  const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
 
-  const { data: target, error: targetError } = await admin.auth.admin.getUserById(body.profile_id)
-  if (targetError || !target.user?.email) {
-    return json({ error: 'Deze gebruiker is niet gevonden.' }, 404)
-  }
-
-  // 4. Genereer de herstel-link server-side en stuur 'm via emailit. Het adres blijft
-  //    binnen deze function — de beheerder-client ziet het nooit.
-  const { data: link, error: linkError } = await admin.auth.admin.generateLink({
+  const { data, error } = await admin.auth.admin.generateLink({
     type: 'recovery',
-    email: target.user.email,
-    options: { redirectTo },
+    email,
+    options: { redirectTo: body.redirectTo },
   })
 
-  if (linkError || !link?.properties?.action_link) {
-    return json({ error: linkError?.message ?? 'Kon geen herstel-link genereren.' }, 500)
+  if (!error && data?.properties?.action_link) {
+    try {
+      await sendEmail({
+        to: email,
+        subject: 'Wachtwoord opnieuw instellen',
+        html: resetEmailHtml(data.properties.action_link),
+        text: resetEmailText(data.properties.action_link),
+      })
+    } catch (err) {
+      console.error('emailit send failed', err)
+      // Bewust geen foutmelding teruggeven: zie boven.
+    }
   }
 
-  try {
-    await sendEmail({
-      to: target.user.email,
-      subject: 'Wachtwoord opnieuw instellen',
-      html: resetEmailHtml(link.properties.action_link),
-      text: resetEmailText(link.properties.action_link),
-    })
-  } catch (err) {
-    console.error('emailit send failed', err)
-    return json({ error: 'De mail kon niet worden verstuurd.' }, 500)
-  }
-
-  return json({ ok: true })
+  return json({ success: true })
 })

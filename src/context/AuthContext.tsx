@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import type { FunctionsHttpError } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
@@ -23,14 +24,32 @@ interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
+  resendVerification: (email: string) => Promise<{ error: string | null }>
   requestPasswordReset: (email: string) => Promise<{ error: string | null }>
   completePasswordReset: (password: string) => Promise<{ error: string | null }>
 }
 
-/** Waar de herstel-link naartoe terugstuurt; moet overeenkomen met de edge function-allowlist. */
+/** Waar de bevestigings-/herstel-link naartoe terugstuurt na het klikken. */
 export const RESET_REDIRECT_URL = `${window.location.origin}${import.meta.env.BASE_URL}`
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+/** Roept een edge function aan en pakt bij een foutstatus de eigen {error} uit de body. */
+async function invokeEdgeFunction(name: string, body: Record<string, unknown>): Promise<{ error: string | null }> {
+  const { error } = await supabase.functions.invoke(name, { body })
+  if (!error) return { error: null }
+
+  const context = (error as FunctionsHttpError).context
+  if (context instanceof Response) {
+    try {
+      const parsed = await context.clone().json()
+      if (parsed?.error) return { error: parsed.error as string }
+    } catch {
+      // val terug op de generieke foutmelding hieronder
+    }
+  }
+  return { error: error.message }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -81,15 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       recoveryMode,
       async signUp({ email, password, username, displayName }) {
-        const { error } = await supabase.auth.signUp({
+        return invokeEdgeFunction('send-verification-email', {
           email,
           password,
-          options: {
-            data: { username: username.toLowerCase(), display_name: displayName },
-            emailRedirectTo: RESET_REDIRECT_URL,
-          },
+          username: username.toLowerCase(),
+          display_name: displayName,
+          redirectTo: RESET_REDIRECT_URL,
         })
-        return { error: error?.message ?? null }
       },
       async signIn(email, password) {
         const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -101,11 +118,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async refreshProfile() {
         if (session) await loadProfile(session.user.id)
       },
+      async resendVerification(email) {
+        return invokeEdgeFunction('send-verification-email', { email, redirectTo: RESET_REDIRECT_URL })
+      },
       async requestPasswordReset(email) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: RESET_REDIRECT_URL,
-        })
-        return { error: error?.message ?? null }
+        return invokeEdgeFunction('send-password-reset-email', { email, redirectTo: RESET_REDIRECT_URL })
       },
       async completePasswordReset(password) {
         const { error } = await supabase.auth.updateUser({ password })
