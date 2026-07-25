@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { AvatarHeader, ProfileTabs } from '@/components/profile/ProfileTabs'
 
 const SWATCHES = ['bg-blue-200', 'bg-avatar-green-bg', 'bg-avatar-peach-bg', 'bg-blue-100', 'bg-avatar-sand-bg']
 
 export function Me() {
-  const { profile, signOut } = useAuth()
+  const { profile } = useAuth()
   const [counts, setCounts] = useState({ stories: 0, friends: 0 })
 
   useEffect(() => {
@@ -48,10 +47,6 @@ export function Me() {
       </Card>
 
       <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn />
-
-      <Button variant="ghost" onClick={() => signOut()}>
-        Uitloggen
-      </Button>
     </div>
   )
 }

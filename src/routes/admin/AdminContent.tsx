@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Pill } from '@/components/ui/Pill'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
+import { StoryPhoto } from '@/components/story/StoryPhoto'
 
 type ContentKind = 'stories' | 'comments' | 'scribbles'
 
@@ -15,6 +16,8 @@ interface ContentItem {
   authorName: string
   /** Alleen bij verhalen: privé of gedeeld met vrienden. */
   visibility?: string
+  /** Alleen bij verhalen. */
+  photoPath?: string | null
   /** Bij krabbels: op wiens plekje het staat. */
   context?: string
 }
@@ -57,19 +60,21 @@ export function AdminContent() {
     if (current === 'stories') {
       const { data } = await supabase
         .from('stories')
-        .select('id, text, created_at, visibility, profiles!stories_author_id_fkey(display_name)')
+        .select('id, text, photo_path, created_at, visibility, profiles!stories_author_id_fkey(display_name)')
         .order('created_at', { ascending: false })
         .limit(50)
       setItems(
         ((data ?? []) as unknown as {
           id: string
           text: string
+          photo_path: string | null
           created_at: string
           visibility: string
           profiles: { display_name: string } | null
         }[]).map((row) => ({
           id: row.id,
           text: row.text,
+          photoPath: row.photo_path,
           created_at: row.created_at,
           visibility: row.visibility,
           authorName: row.profiles?.display_name ?? 'Onbekend',
@@ -126,6 +131,12 @@ export function AdminContent() {
 
   async function remove(id: string) {
     setConfirmingDelete(null)
+
+    const photoPath = items?.find((item) => item.id === id)?.photoPath
+    if (photoPath) {
+      await supabase.storage.from('story-photos').remove([photoPath])
+    }
+
     const { error: deleteError } = await supabase.from(TABLE_BY_KIND[kind]).delete().eq('id', id)
     if (deleteError) {
       setError('Verwijderen lukte niet.')
@@ -170,6 +181,7 @@ export function AdminContent() {
             <p className={`mt-3 text-ink-700 ${kind === 'scribbles' ? 'font-hand text-2xl leading-snug' : ''}`}>
               {item.text}
             </p>
+            {item.photoPath && <StoryPhoto path={item.photoPath} />}
 
             {confirmingDelete === item.id ? (
               <div className="mt-4 flex flex-col gap-2 rounded-card bg-warn-bg p-4">

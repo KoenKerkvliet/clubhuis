@@ -3,8 +3,10 @@ import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
+import { Button } from '@/components/ui/Button'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { PrivatePill } from '@/components/ui/Pill'
+import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ArrowRightIcon } from '@/components/ui/icons'
 
 type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels'
@@ -12,6 +14,7 @@ type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels'
 interface Story {
   id: string
   text: string
+  photo_path: string | null
   visibility: string
   created_at: string
 }
@@ -51,6 +54,9 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const { profile: viewer } = useAuth()
   const [tab, setTab] = useState<Tab>('verhalen')
   const [stories, setStories] = useState<Story[] | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
   const [answers, setAnswers] = useState<Answer[]>([])
   const [scribbles, setScribbles] = useState<Scribble[] | null>(null)
@@ -66,7 +72,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setStories(null)
     const { data } = await supabase
       .from('stories')
-      .select('id, text, visibility, created_at')
+      .select('id, text, photo_path, visibility, created_at')
       .eq('author_id', profileId)
       .order('created_at', { ascending: false })
     setStories(data ?? [])
@@ -108,6 +114,29 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     loadScribbles()
   }
 
+  function startEdit(story: Story) {
+    setEditingId(story.id)
+    setEditText(story.text)
+  }
+
+  async function saveEdit(id: string) {
+    const trimmed = editText.trim()
+    if (!trimmed) return
+    await supabase.from('stories').update({ text: trimmed }).eq('id', id)
+    setStories((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed } : s)) ?? null)
+    setEditingId(null)
+  }
+
+  async function deleteStory(id: string) {
+    const story = stories?.find((s) => s.id === id)
+    if (story?.photo_path) {
+      await supabase.storage.from('story-photos').remove([story.photo_path])
+    }
+    await supabase.from('stories').delete().eq('id', id)
+    setStories((prev) => prev?.filter((s) => s.id !== id) ?? null)
+    setConfirmingDeleteId(null)
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <SegmentedTabs
@@ -133,7 +162,62 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
                   {new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} · Gedeeld met vrienden
                 </p>
               )}
-              <p className="mt-3 text-ink-700">{story.text}</p>
+
+              {editingId === story.id ? (
+                <div className="mt-3 flex flex-col gap-2">
+                  <textarea
+                    className="w-full resize-none rounded-2xl border border-blue-200 bg-paper p-3 text-ink-700 outline-none focus:border-blue-400"
+                    rows={3}
+                    maxLength={2000}
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={() => saveEdit(story.id)} disabled={!editText.trim()}>
+                      Opslaan
+                    </Button>
+                    <Button variant="muted" onClick={() => setEditingId(null)}>
+                      Annuleren
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="mt-3 text-ink-700">{story.text}</p>
+                  {story.photo_path && <StoryPhoto path={story.photo_path} />}
+                </>
+              )}
+
+              {isOwn && editingId !== story.id && (
+                <div className="mt-3 flex gap-4">
+                  <button
+                    type="button"
+                    onClick={() => startEdit(story)}
+                    className="text-sm font-extrabold text-blue-500"
+                  >
+                    Bewerken
+                  </button>
+                  {confirmingDeleteId === story.id ? (
+                    <span className="flex items-center gap-2 text-sm font-bold text-warn-text">
+                      Verwijderen?
+                      <button type="button" onClick={() => deleteStory(story.id)} className="font-extrabold underline">
+                        Ja
+                      </button>
+                      <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
+                        Nee
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingDeleteId(story.id)}
+                      className="text-sm font-extrabold text-warn-text"
+                    >
+                      Verwijderen
+                    </button>
+                  )}
+                </div>
+              )}
             </Card>
           ))}
         </div>

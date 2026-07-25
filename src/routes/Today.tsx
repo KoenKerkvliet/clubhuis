@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { AuraPill, CommentPill } from '@/components/ui/Pill'
-import { IconButton } from '@/components/ui/IconButton'
-import { Wordmark } from '@/components/layout/PageHeader'
-import { BellIcon, TellIcon } from '@/components/ui/icons'
+import { StoryPhoto } from '@/components/story/StoryPhoto'
+import { TellIcon } from '@/components/ui/icons'
 
 interface FeedStory {
   id: string
   text: string
+  photo_path: string | null
   created_at: string
   author_id: string
   profiles: { username: string; display_name: string; avatar_url: string | null } | null
@@ -27,28 +27,20 @@ function greeting(hour: number) {
 export function Today() {
   const { profile } = useAuth()
   const [stories, setStories] = useState<FeedStory[] | null>(null)
-  const [hasNotifications, setHasNotifications] = useState(false)
 
   useEffect(() => {
     let active = true
     supabase
       .from('stories')
-      .select('id, text, created_at, author_id, profiles!stories_author_id_fkey(username, display_name, avatar_url)')
+      .select(
+        'id, text, photo_path, created_at, author_id, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
+      )
       .eq('visibility', 'friends')
       .order('created_at', { ascending: false })
       .limit(20)
       .then(({ data }) => {
         if (active) setStories((data as unknown as FeedStory[]) ?? [])
       })
-
-    if (profile) {
-      supabase
-        .from('notifications')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', profile.id)
-        .eq('read', false)
-        .then(({ count }) => active && setHasNotifications(!!count))
-    }
 
     return () => {
       active = false
@@ -57,15 +49,6 @@ export function Today() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex items-center justify-between">
-        <Wordmark className="text-2xl" />
-        <Link to="/meldingen">
-          <IconButton badge={hasNotifications} aria-label="Meldingen">
-            <BellIcon width={20} height={20} />
-          </IconButton>
-        </Link>
-      </div>
-
       <div className="rounded-card bg-blue-100 p-6">
         <p className="font-bold text-blue-500">
           {greeting(new Date().getHours())} {profile?.display_name}.
@@ -106,6 +89,7 @@ export function Today() {
               </div>
             </div>
             <p className="mt-3 text-ink-700">{story.text}</p>
+            {story.photo_path && <StoryPhoto path={story.photo_path} />}
             <div className="mt-4 flex items-center gap-2">
               <AuraPill />
               <CommentPill count={0} />

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { TitleHeader } from '@/components/layout/PageHeader'
-import { CheckIcon, FriendsIcon, LockIcon } from '@/components/ui/icons'
+import { CameraIcon, CheckIcon, FriendsIcon, LockIcon, XIcon } from '@/components/ui/icons'
 
 const TAGLINES = [
   'Dat wordt later leuk om terug te lezen.',
@@ -34,9 +34,20 @@ export function Tell() {
   const [text, setText] = useState('')
   const [visibility, setVisibility] = useState<'private' | 'friends'>('friends')
   const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<{ headline: string; tagline: string } | null>(null)
+
+  useEffect(() => {
+    if (!photo) {
+      setPhotoPreview(null)
+      return
+    }
+    const url = URL.createObjectURL(photo)
+    setPhotoPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [photo])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -91,13 +102,34 @@ export function Tell() {
             onChange={(e) => setText(e.target.value)}
             required
           />
-          <input
-            ref={fileInput}
-            type="file"
-            accept="image/*"
-            className="mt-3 text-sm font-semibold text-ink-400"
-            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-          />
+          {photoPreview ? (
+            <div className="relative mt-3">
+              <img src={photoPreview} alt="" className="max-h-[320px] w-full rounded-2xl object-cover" />
+              <button
+                type="button"
+                onClick={() => {
+                  setPhoto(null)
+                  if (fileInput.current) fileInput.current.value = ''
+                }}
+                className="absolute right-2 top-2 flex h-9 w-9 items-center justify-center rounded-full bg-ink-900/70 text-paper"
+                aria-label="Foto verwijderen"
+              >
+                <XIcon width={16} height={16} />
+              </button>
+            </div>
+          ) : (
+            <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-extrabold text-blue-500">
+              <CameraIcon width={20} height={20} />
+              Voeg een foto toe
+              <input
+                ref={fileInput}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+              />
+            </label>
+          )}
         </Card>
 
         <div className="flex flex-col gap-2.5">

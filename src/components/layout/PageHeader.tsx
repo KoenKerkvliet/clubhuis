@@ -1,13 +1,14 @@
 import type { ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { IconButton } from '@/components/ui/IconButton'
+import { LogoMark } from '@/components/ui/LogoMark'
 import { ChevronLeftIcon } from '@/components/ui/icons'
 
-export function Wordmark({ className = '' }: { className?: string }) {
+export function Wordmark({ className = '', logoSize = 28 }: { className?: string; logoSize?: number }) {
   return (
-    <span className={`inline-flex items-baseline font-extrabold text-ink-900 ${className}`}>
+    <span className={`inline-flex items-center gap-2 font-extrabold text-ink-900 ${className}`}>
+      <LogoMark size={logoSize} />
       Clubhuis
-      <span className="ml-1 text-aura">•</span>
     </span>
   )
 }
