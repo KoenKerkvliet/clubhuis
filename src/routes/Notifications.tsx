@@ -46,6 +46,7 @@ export function Notifications() {
   const navigate = useNavigate()
   const [items, setItems] = useState<Notification[] | null>(null)
   const [actors, setActors] = useState<Actors>({})
+  const [confirmingClearAll, setConfirmingClearAll] = useState(false)
 
   useEffect(() => {
     if (!profile) return
@@ -84,6 +85,18 @@ export function Notifications() {
     setItems((prev) => prev?.filter((n) => n.id !== notificationId) ?? null)
   }
 
+  async function removeNotification(id: string) {
+    setItems((prev) => prev?.filter((n) => n.id !== id) ?? null)
+    await supabase.from('notifications').delete().eq('id', id)
+  }
+
+  async function clearAll() {
+    if (!profile) return
+    setConfirmingClearAll(false)
+    setItems([])
+    await supabase.from('notifications').delete().eq('user_id', profile.id)
+  }
+
   function describe(n: Notification) {
     const actor = n.payload?.from ? actors[n.payload.from]?.name ?? 'Iemand' : 'Iemand'
     switch (n.type) {
@@ -111,6 +124,28 @@ export function Notifications() {
         </IconButton>
       </div>
 
+      {!!items?.length && (
+        confirmingClearAll ? (
+          <div className="flex flex-col gap-2 rounded-card bg-warn-bg p-4">
+            <p className="font-bold text-warn-text">Alle meldingen wissen?</p>
+            <div className="flex gap-2">
+              <Button onClick={clearAll}>Ja, wissen</Button>
+              <Button variant="muted" onClick={() => setConfirmingClearAll(false)}>
+                Annuleren
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="self-end text-sm font-extrabold text-ink-400"
+            onClick={() => setConfirmingClearAll(true)}
+          >
+            Alles wissen
+          </button>
+        )
+      )}
+
       <div className="flex flex-col gap-3">
         {items === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
         {items?.length === 0 && <Card className="text-center text-ink-400">Nog geen meldingen.</Card>}
@@ -120,8 +155,16 @@ export function Notifications() {
             const actorInfo = n.payload.from ? actors[n.payload.from] : undefined
             const actor = actorInfo?.name ?? 'Iemand'
             return (
-              <Card key={n.id}>
-                <div className="flex items-center gap-3">
+              <Card key={n.id} className="relative">
+                <button
+                  type="button"
+                  className="absolute right-3 top-3 text-ink-400"
+                  onClick={() => removeNotification(n.id)}
+                  aria-label="Melding wissen"
+                >
+                  <XIcon width={16} height={16} />
+                </button>
+                <div className="flex items-center gap-3 pr-6">
                   <Avatar name={actor} avatarPath={actorInfo?.avatarPath} size={44} />
                   <div>
                     <p className="text-ink-900">
@@ -145,16 +188,24 @@ export function Notifications() {
           const { Icon, bg, text } = ICONS[n.type] ?? ICONS.comment
           const { actor, rest } = describe(n)
           return (
-            <Card key={n.id} className="flex items-center gap-3">
+            <Card key={n.id} className="relative flex items-center gap-3">
               <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-squircle ${bg} ${text}`}>
                 <Icon width={20} height={20} />
               </div>
-              <div>
+              <div className="min-w-0 flex-1 pr-6">
                 <p className="text-ink-900">
                   <span className="font-extrabold">{actor}</span> {rest}
                 </p>
                 <p className="text-xs font-bold text-ink-400">{timeAgo(n.created_at)}</p>
               </div>
+              <button
+                type="button"
+                className="absolute right-3 top-3 text-ink-400"
+                onClick={() => removeNotification(n.id)}
+                aria-label="Melding wissen"
+              >
+                <XIcon width={16} height={16} />
+              </button>
             </Card>
           )
         })}

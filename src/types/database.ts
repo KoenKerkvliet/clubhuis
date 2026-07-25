@@ -280,6 +280,7 @@ export type Database = {
           role: string
           status: string
           status_message: string | null
+          stories_last_viewed_at: string
           theme_color: string
           updated_at: string
           username: string
@@ -292,6 +293,7 @@ export type Database = {
           role?: string
           status?: string
           status_message?: string | null
+          stories_last_viewed_at?: string
           theme_color?: string
           updated_at?: string
           username: string
@@ -304,6 +306,7 @@ export type Database = {
           role?: string
           status?: string
           status_message?: string | null
+          stories_last_viewed_at?: string
           theme_color?: string
           updated_at?: string
           username?: string
