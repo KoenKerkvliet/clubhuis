@@ -65,8 +65,8 @@ export function AdminModeration() {
       <div>
         <h1 className="text-2xl font-extrabold text-ink-900">Moderatie</h1>
         <p className="mt-1 text-ink-400">
-          Automatisch tegengehouden berichten. De schrijver kreeg een vriendelijke uitleg zonder het gewraakte woord te
-          noemen.
+          Berichten die een gebruiker heeft gerapporteerd, of automatisch zijn tegengehouden. Bij dat laatste kreeg de
+          schrijver een vriendelijke uitleg zonder het gewraakte woord te noemen.
         </p>
       </div>
 

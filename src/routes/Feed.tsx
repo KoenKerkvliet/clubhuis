@@ -58,6 +58,10 @@ export function Feed() {
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [favoriteCount, setFavoriteCount] = useState(0)
+  const [reportingId, setReportingId] = useState<string | null>(null)
+  const [reportReason, setReportReason] = useState('')
+  const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
+  const [reportError, setReportError] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -201,6 +205,26 @@ export function Feed() {
     await supabase.from('hidden_stories').delete().eq('story_id', storyId).eq('user_id', profile.id)
   }
 
+  async function submitReport(storyId: string) {
+    const reason = reportReason.trim()
+    setReportingId(null)
+    setReportReason('')
+    setReportError(null)
+    setReportedIds((prev) => new Set(prev).add(storyId))
+
+    const { error } = await supabase.functions.invoke('report-content', {
+      body: { content_type: 'story', content_id: storyId, reason },
+    })
+    if (error) {
+      setReportedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(storyId)
+        return next
+      })
+      setReportError('Rapporteren lukte niet. Probeer het nog eens.')
+    }
+  }
+
   async function refreshComments(storyId: string) {
     const { data } = await supabase
       .from('story_comments')
@@ -295,6 +319,8 @@ export function Feed() {
   return (
     <div className="flex flex-col gap-5">
       <BigTitle>Verhalen</BigTitle>
+
+      {reportError && <p className="text-sm font-bold text-warn-text">{reportError}</p>}
 
       {incoming.map((req) => (
         <div key={req.id} className="rounded-card bg-blue-100 p-5">
@@ -407,16 +433,33 @@ export function Feed() {
                           )}
                         </>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            hideStory(story.id)
-                            setOpenMenuId(null)
-                          }}
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
-                        >
-                          Verbergen
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              hideStory(story.id)
+                              setOpenMenuId(null)
+                            }}
+                            className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                          >
+                            Verbergen
+                          </button>
+                          {reportedIds.has(story.id) ? (
+                            <p className="px-3 py-2 text-left text-sm font-bold text-ink-400">Gerapporteerd</p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setReportingId(story.id)
+                                setReportError(null)
+                                setOpenMenuId(null)
+                              }}
+                              className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-warn-text transition-colors hover:bg-warn-bg"
+                            >
+                              Rapporteren
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -474,6 +517,32 @@ export function Feed() {
                   <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
                     Nee
                   </button>
+                </div>
+              )}
+
+              {!isOwn && reportingId === story.id && (
+                <div className="mt-3 flex flex-col gap-2 rounded-card bg-warn-bg p-4">
+                  <p className="font-bold text-warn-text">Dit bericht rapporteren bij een beheerder?</p>
+                  <textarea
+                    className="w-full resize-none rounded-2xl border-none bg-paper p-3 text-sm text-ink-700 outline-none"
+                    rows={2}
+                    maxLength={300}
+                    placeholder="Waarom rapporteer je dit? (optioneel)"
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <Button onClick={() => submitReport(story.id)}>Rapporteren</Button>
+                    <Button
+                      variant="muted"
+                      onClick={() => {
+                        setReportingId(null)
+                        setReportReason('')
+                      }}
+                    >
+                      Annuleren
+                    </Button>
+                  </div>
                 </div>
               )}
 
