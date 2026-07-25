@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import { RESET_REDIRECT_URL } from '@/context/AuthContext'
+import { RESET_REDIRECT_URL, useAuth } from '@/context/AuthContext'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
@@ -23,6 +23,7 @@ const STATUS_FILTERS = [
   { value: 'active', label: 'Actief' },
   { value: 'rejected', label: 'Afgewezen' },
   { value: 'blocked', label: 'Geblokkeerd' },
+  { value: 'archived', label: 'Gearchiveerd' },
   { value: 'all', label: 'Alle' },
 ] as const
 
@@ -37,6 +38,7 @@ const STATUS_STYLES: Record<string, string> = {
   active: 'bg-avatar-green-bg text-avatar-green-text',
   rejected: 'bg-neutral-badge text-ink-500',
   blocked: 'bg-warn-bg text-warn-text',
+  archived: 'bg-neutral-badge text-ink-500',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
   active: 'Actief',
   rejected: 'Afgewezen',
   blocked: 'Geblokkeerd',
+  archived: 'Gearchiveerd',
 }
 
 function formatDate(iso: string) {
@@ -51,10 +54,13 @@ function formatDate(iso: string) {
 }
 
 export function AdminAccounts() {
+  const { profile: currentAdmin } = useAuth()
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]['value']>('pending')
   const [search, setSearch] = useState('')
   const [rows, setRows] = useState<ProfileRow[] | null>(null)
   const [confirmingReset, setConfirmingReset] = useState<string | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [feedback, setFeedback] = useState<{ id: string; message: string; error?: boolean } | null>(null)
 
   useEffect(() => {
@@ -107,6 +113,24 @@ export function AdminAccounts() {
       return
     }
     setFeedback({ id, message: 'Herstelmail verstuurd.' })
+  }
+
+  async function deleteAccount(id: string) {
+    setFeedback({ id, message: 'Bezig met verwijderen...' })
+
+    const { data, error } = await supabase.functions.invoke('admin-delete-account', {
+      body: { profile_id: id },
+    })
+
+    const responseError = (data as { error?: string } | null)?.error
+    if (error || responseError) {
+      setFeedback({ id, message: responseError ?? 'Verwijderen lukte niet.', error: true })
+      return
+    }
+
+    setConfirmingDelete(null)
+    setDeleteConfirmText('')
+    setRows((prev) => prev?.filter((r) => r.id !== id) ?? null)
   }
 
   const visible = rows?.filter((row) => {
@@ -191,6 +215,18 @@ export function AdminAccounts() {
                 </Button>
               )}
 
+              {(row.status === 'active' || row.status === 'blocked') && row.id !== currentAdmin?.id && (
+                <Button variant="muted" onClick={() => setStatus(row.id, 'archived')}>
+                  Archiveren
+                </Button>
+              )}
+
+              {row.status === 'archived' && (
+                <Button variant="secondary" onClick={() => setStatus(row.id, 'active')}>
+                  Herstellen
+                </Button>
+              )}
+
               {confirmingReset === row.id ? (
                 <div className="flex w-full flex-col gap-2 rounded-card bg-warn-bg p-4">
                   <p className="font-bold text-warn-text">
@@ -207,6 +243,47 @@ export function AdminAccounts() {
                 <Button variant="ghost" onClick={() => setConfirmingReset(row.id)}>
                   Wachtwoord herstellen
                 </Button>
+              )}
+
+              {row.status === 'archived' && row.id !== currentAdmin?.id && (
+                confirmingDelete === row.id ? (
+                  <div className="flex w-full flex-col gap-2 rounded-card bg-warn-bg p-4">
+                    <p className="font-bold text-warn-text">
+                      Dit verwijdert het account van {row.display_name} definitief, met alle verhalen,
+                      foto's, krabbels en reacties. Dit kan niet ongedaan gemaakt worden.
+                    </p>
+                    <p className="text-sm font-semibold text-warn-text">
+                      Typ <span className="font-extrabold">{row.username}</span> ter bevestiging.
+                    </p>
+                    <input
+                      className="rounded-pill bg-paper px-4 py-2.5 text-ink-700 outline-none placeholder:text-ink-400/60"
+                      placeholder="gebruikersnaam"
+                      value={deleteConfirmText}
+                      onChange={(e) => setDeleteConfirmText(e.target.value)}
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        disabled={deleteConfirmText.trim().toLowerCase() !== row.username}
+                        onClick={() => deleteAccount(row.id)}
+                      >
+                        Ja, definitief verwijderen
+                      </Button>
+                      <Button
+                        variant="muted"
+                        onClick={() => {
+                          setConfirmingDelete(null)
+                          setDeleteConfirmText('')
+                        }}
+                      >
+                        Annuleren
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <Button variant="ghost" onClick={() => setConfirmingDelete(row.id)}>
+                    Verwijderen
+                  </Button>
+                )
               )}
             </div>
 

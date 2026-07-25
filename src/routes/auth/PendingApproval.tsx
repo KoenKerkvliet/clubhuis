@@ -5,12 +5,13 @@ import { Card } from '@/components/ui/Card'
 export function PendingApproval() {
   const { profile, signOut } = useAuth()
 
-  const isRejectedOrBlocked = profile?.status === 'rejected' || profile?.status === 'blocked'
+  const isUnavailable =
+    profile?.status === 'rejected' || profile?.status === 'blocked' || profile?.status === 'archived'
 
   return (
     <div className="flex min-h-dvh items-center justify-center bg-cream px-4">
       <Card className="max-w-sm text-center">
-        {isRejectedOrBlocked ? (
+        {isUnavailable ? (
           <>
             <h1 className="mb-2 text-xl font-bold text-ink-900">Even geduld</h1>
             <p className="text-ink-400">
