@@ -29,6 +29,7 @@ export function ContactsPanel() {
   const [results, setResults] = useState<ProfileCard[]>([])
   const [searching, setSearching] = useState(false)
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
+  const [sendError, setSendError] = useState<string | null>(null)
   const [friends, setFriends] = useState<FriendRow[]>([])
   // Iedereen met wie al een vriendschap bestaat of een verzoek open staat (in beide
   // richtingen) — die hoort niet meer als zoekresultaat op te duiken.
@@ -93,8 +94,16 @@ export function ContactsPanel() {
 
   async function sendRequest(addresseeId: string) {
     if (!profile) return
+    setSendError(null)
     const { error } = await supabase.from('friendships').insert({ requester_id: profile.id, addressee_id: addresseeId })
-    if (!error) setSentTo((prev) => new Set(prev).add(addresseeId))
+    if (!error) {
+      setSentTo((prev) => new Set(prev).add(addresseeId))
+      return
+    }
+    // Kan gebeuren als de ander net (vlak voor dit verzoek) zelf ook al een verzoek stuurde —
+    // dan bestaat de verbinding al en herlaadt de lijst zodat deze persoon verdwijnt.
+    setSendError('Jullie hebben al een verbinding met elkaar.')
+    loadFriends()
   }
 
   const visibleResults = results.filter((r) => !connectedIds.has(r.id))
@@ -113,6 +122,7 @@ export function ContactsPanel() {
 
       {query.trim().length >= 2 && (
         <div className="flex flex-col gap-2.5">
+          {sendError && <p className="text-sm font-semibold text-warn-text">{sendError}</p>}
           {searching && <p className="text-sm text-ink-400">Even zoeken...</p>}
           {!searching && visibleResults.length === 0 && (
             <Card className="text-center text-ink-400">Niemand gevonden met die gebruikersnaam.</Card>
