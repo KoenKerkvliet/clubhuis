@@ -1,14 +1,7 @@
 import { NavLink } from 'react-router-dom'
-import { FriendsIcon, MeIcon, TellIcon, TodayIcon } from '@/components/ui/icons'
+import { FriendsIcon, MeIcon, TellIcon } from '@/components/ui/icons'
 
-const links = [
-  { to: '/vandaag', label: 'Vandaag', Icon: TodayIcon },
-  { to: '/vrienden', label: 'Vrienden', Icon: FriendsIcon },
-]
-
-const endLinks = [{ to: '/ik', label: 'Ik', Icon: MeIcon }]
-
-function NavItem({ to, label, Icon }: { to: string; label: string; Icon: typeof TodayIcon }) {
+function NavItem({ to, label, Icon }: { to: string; label: string; Icon: typeof MeIcon }) {
   return (
     <NavLink
       to={to}
@@ -28,11 +21,9 @@ export function BottomNav() {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-blue-100/70 bg-paper pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_-16px_rgb(38_33_58/0.25)] md:hidden">
       <ul className="mx-auto flex max-w-md items-center justify-between px-3 py-2.5">
-        {links.map((link) => (
-          <li key={link.to}>
-            <NavItem {...link} />
-          </li>
-        ))}
+        <li>
+          <NavItem to="/ik" label="Ik" Icon={MeIcon} />
+        </li>
         <li>
           <NavLink
             to="/vertellen"
@@ -42,11 +33,9 @@ export function BottomNav() {
             Vertellen
           </NavLink>
         </li>
-        {endLinks.map((link) => (
-          <li key={link.to}>
-            <NavItem {...link} />
-          </li>
-        ))}
+        <li>
+          <NavItem to="/vrienden" label="Vrienden" Icon={FriendsIcon} />
+        </li>
       </ul>
     </nav>
   )

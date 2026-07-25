@@ -1,15 +1,8 @@
 import { NavLink } from 'react-router-dom'
-import { FriendsIcon, MeIcon, TellIcon, TodayIcon } from '@/components/ui/icons'
+import { FriendsIcon, MeIcon, TellIcon } from '@/components/ui/icons'
 import { LogoMark } from '@/components/ui/LogoMark'
 
-const links = [
-  { to: '/vandaag', label: 'Vandaag', Icon: TodayIcon },
-  { to: '/vrienden', label: 'Vrienden', Icon: FriendsIcon },
-]
-
-const endLinks = [{ to: '/ik', label: 'Ik', Icon: MeIcon }]
-
-function SidebarLink({ to, label, Icon }: { to: string; label: string; Icon: typeof TodayIcon }) {
+function SidebarLink({ to, label, Icon }: { to: string; label: string; Icon: typeof MeIcon }) {
   return (
     <NavLink
       to={to}
@@ -30,14 +23,12 @@ function SidebarLink({ to, label, Icon }: { to: string; label: string; Icon: typ
 export function Sidebar() {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col gap-1 border-r border-blue-100/70 bg-paper px-4 py-6 md:flex">
-      <NavLink to="/vandaag" className="mb-6 flex items-center gap-2 px-2">
+      <NavLink to="/ik" className="mb-6 flex items-center gap-2 px-2">
         <LogoMark size={28} />
         <span className="text-lg font-extrabold text-ink-900">Clubhuis</span>
       </NavLink>
 
-      {links.map((link) => (
-        <SidebarLink key={link.to} {...link} />
-      ))}
+      <SidebarLink to="/ik" label="Ik" Icon={MeIcon} />
 
       <NavLink
         to="/vertellen"
@@ -47,9 +38,7 @@ export function Sidebar() {
         Vertellen
       </NavLink>
 
-      {endLinks.map((link) => (
-        <SidebarLink key={link.to} {...link} />
-      ))}
+      <SidebarLink to="/vrienden" label="Vrienden" Icon={FriendsIcon} />
     </aside>
   )
 }

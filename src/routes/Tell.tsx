@@ -207,7 +207,7 @@ export function Tell() {
             </div>
             <p className="mt-4 text-xl font-extrabold text-ink-900">{confirmation.headline}</p>
             <p className="font-hand mt-2 text-2xl text-ink-400">{confirmation.tagline}</p>
-            <Button className="mt-6 w-full" onClick={() => navigate('/vandaag')}>
+            <Button className="mt-6 w-full" onClick={() => navigate('/ik')}>
               Bekijk mijn plekje
             </Button>
             <button

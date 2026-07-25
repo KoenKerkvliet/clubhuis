@@ -34,7 +34,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-20 flex items-center justify-between border-b border-blue-100/70 bg-cream/95 px-4 py-3 backdrop-blur md:justify-end md:px-8">
-      <Link to="/vandaag" className="flex items-center gap-2 md:hidden">
+      <Link to="/ik" className="flex items-center gap-2 md:hidden">
         <LogoMark size={26} />
         <span className="text-lg font-extrabold text-ink-900">Clubhuis</span>
       </Link>
