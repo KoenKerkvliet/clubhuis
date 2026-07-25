@@ -19,7 +19,10 @@ export default defineConfig(({ command }) => {
       react(),
       tailwindcss(),
       VitePWA({
-        registerType: 'autoUpdate',
+        // Bewust 'prompt' en geen 'autoUpdate': een nieuwe versie mag de pagina nooit
+        // zomaar herladen terwijl een kind een verhaal aan het typen is.
+        registerType: 'prompt',
+        injectRegister: null,
         includeAssets: ['favicon.svg'],
         manifest: {
           name: 'Clubhuis',
