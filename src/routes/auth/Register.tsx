@@ -30,11 +30,16 @@ export function Register() {
 
     const { error } = await signUp({ email, password, username, displayName })
     if (error) {
-      setError(
-        error.includes('duplicate') || error.toLowerCase().includes('already')
-          ? 'Dit e-mailadres of deze gebruikersnaam is al in gebruik.'
-          : 'Registreren lukte niet. Probeer het nog eens.',
-      )
+      const lower = error.toLowerCase()
+      if (lower.includes('duplicate') || lower.includes('already')) {
+        setError('Dit e-mailadres of deze gebruikersnaam is al in gebruik.')
+      } else if (lower.includes('rate limit')) {
+        setError(
+          'Er zijn zojuist te veel mails verstuurd. Probeer het over ongeveer een uur nog eens — er is niets aangemaakt.',
+        )
+      } else {
+        setError('Registreren lukte niet. Probeer het nog eens.')
+      }
     } else {
       setDone(true)
     }
