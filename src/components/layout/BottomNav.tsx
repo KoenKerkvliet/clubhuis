@@ -25,7 +25,7 @@ export function BottomNav() {
           <NavItem to="/ik" label="Ik" Icon={MeIcon} />
         </li>
         <li>
-          <NavItem to="/vrienden" label="Vrienden" Icon={FriendsIcon} />
+          <NavItem to="/verhalen" label="Verhalen" Icon={FriendsIcon} />
         </li>
       </ul>
     </nav>

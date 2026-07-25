@@ -31,6 +31,16 @@ export function PlusIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function MoreIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)} fill="currentColor" stroke="none">
+      <circle cx="12" cy="5" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="12" cy="19" r="1.7" />
+    </svg>
+  )
+}
+
 export function FriendsIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>

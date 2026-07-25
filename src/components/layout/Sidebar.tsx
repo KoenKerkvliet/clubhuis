@@ -29,7 +29,7 @@ export function Sidebar() {
       </NavLink>
 
       <SidebarLink to="/ik" label="Ik" Icon={MeIcon} />
-      <SidebarLink to="/vrienden" label="Vrienden" Icon={FriendsIcon} />
+      <SidebarLink to="/verhalen" label="Verhalen" Icon={FriendsIcon} />
     </aside>
   )
 }

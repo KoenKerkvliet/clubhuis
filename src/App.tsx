@@ -10,7 +10,7 @@ import { ForgotPassword } from '@/routes/auth/ForgotPassword'
 import { ResetPassword } from '@/routes/auth/ResetPassword'
 import { PendingApproval } from '@/routes/auth/PendingApproval'
 import { ClosedScreen } from '@/routes/auth/ClosedScreen'
-import { Friends } from '@/routes/Friends'
+import { Feed } from '@/routes/Feed'
 import { FriendProfile } from '@/routes/FriendProfile'
 import { Tell } from '@/routes/Tell'
 import { Me } from '@/routes/Me'
@@ -89,8 +89,8 @@ export function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/ik" element={<Me />} />
-        <Route path="/vrienden" element={<Friends />} />
-        <Route path="/vrienden/:username" element={<FriendProfile />} />
+        <Route path="/verhalen" element={<Feed />} />
+        <Route path="/verhalen/:username" element={<FriendProfile />} />
         <Route path="/vertellen" element={<Tell />} />
         <Route path="/meldingen" element={<Notifications />} />
         <Route path="*" element={<Navigate to="/ik" replace />} />

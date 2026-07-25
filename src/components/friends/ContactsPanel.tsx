@@ -133,7 +133,7 @@ export function ContactsPanel() {
           <Card className="text-center text-ink-400">Nog geen vrienden — zoek iemand hierboven.</Card>
         )}
         {friends.map((friend) => (
-          <Link key={friend.id} to={`/vrienden/${friend.username}`}>
+          <Link key={friend.id} to={`/verhalen/${friend.username}`}>
             <Card className="flex items-center gap-3">
               <Avatar name={friend.display_name} avatarPath={friend.avatar_url} size={44} />
               <div className="flex-1">

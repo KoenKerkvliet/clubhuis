@@ -30,14 +30,29 @@ export function AuraPill({ count, active = false, onClick, className = '' }: Aur
   )
 }
 
-export function CommentPill({ count, className = '' }: { count: number; className?: string }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-pill bg-neutral-badge px-3.5 py-1.5 text-sm font-extrabold text-ink-500 ${className}`}
-    >
+interface CommentPillProps {
+  count: number
+  onClick?: () => void
+  className?: string
+}
+
+export function CommentPill({ count, onClick, className = '' }: CommentPillProps) {
+  const classes = `inline-flex items-center gap-1.5 rounded-pill bg-neutral-badge px-3.5 py-1.5 text-sm font-extrabold text-ink-500 transition-colors ${
+    onClick ? 'hover:bg-cream-100 active:scale-95' : ''
+  } ${className}`
+  const content = (
+    <>
       <CommentIcon width={16} height={16} />
       {count}
-    </span>
+    </>
+  )
+
+  if (!onClick) return <span className={classes}>{content}</span>
+
+  return (
+    <button type="button" onClick={onClick} className={classes}>
+      {content}
+    </button>
   )
 }
 

@@ -94,6 +94,11 @@
     outline: 3px solid var(--color-blue-200);
     outline-offset: 2px;
   }
+
+  /* Browsers geven <button> standaard geen handje bij hover (in tegenstelling tot <a>). */
+  button:not(:disabled) {
+    cursor: pointer;
+  }
 }
 
 @layer components {

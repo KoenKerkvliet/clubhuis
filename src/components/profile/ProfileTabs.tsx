@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -9,7 +9,7 @@ import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { AuraPill, PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ContactsPanel } from '@/components/friends/ContactsPanel'
-import { ArrowRightIcon, CameraIcon, PlusIcon } from '@/components/ui/icons'
+import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/icons'
 
 type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels' | 'vrienden'
 
@@ -67,12 +67,23 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const [newScribble, setNewScribble] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyText, setReplyText] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (tab === 'verhalen') loadStories()
     if (tab === 'vriendenboekje') loadVriendenboekje()
     if (tab === 'krabbels') loadScribbles()
   }, [tab, profileId])
+
+  useEffect(() => {
+    if (!openMenuId) return
+    function onOutsideClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpenMenuId(null)
+    }
+    document.addEventListener('mousedown', onOutsideClick)
+    return () => document.removeEventListener('mousedown', onOutsideClick)
+  }, [openMenuId])
 
   async function loadStories() {
     setStories(null)
@@ -216,11 +227,48 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
           {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
           {stories?.length === 0 && <Card className="text-center text-ink-400">Nog geen verhalen.</Card>}
           {stories?.map((story) => (
-            <Card key={story.id}>
+            <Card key={story.id} className="relative">
+              {isOwn && editingId !== story.id && (
+                <div className="absolute right-3 top-3" ref={openMenuId === story.id ? menuRef : undefined}>
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenuId(openMenuId === story.id ? null : story.id)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-blue-50"
+                    aria-label="Opties voor dit bericht"
+                  >
+                    <MoreIcon width={18} height={18} />
+                  </button>
+                  {openMenuId === story.id && (
+                    <div className="absolute right-0 top-9 z-10 w-40 rounded-card bg-paper p-1.5 shadow-soft">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          startEdit(story)
+                          setOpenMenuId(null)
+                        }}
+                        className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                      >
+                        Bewerken
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmingDeleteId(story.id)
+                          setOpenMenuId(null)
+                        }}
+                        className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-warn-text transition-colors hover:bg-warn-bg"
+                      >
+                        Verwijderen
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {story.visibility === 'private' ? (
                 <PrivatePill time={new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} />
               ) : (
-                <p className="text-xs font-bold text-ink-400">
+                <p className="pr-8 text-xs font-bold text-ink-400">
                   {new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} · Gedeeld met vrienden
                 </p>
               )}
@@ -257,34 +305,15 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
                 </>
               )}
 
-              {isOwn && editingId !== story.id && (
-                <div className="mt-3 flex gap-4">
-                  <button
-                    type="button"
-                    onClick={() => startEdit(story)}
-                    className="text-sm font-extrabold text-blue-500"
-                  >
-                    Bewerken
+              {isOwn && confirmingDeleteId === story.id && (
+                <div className="mt-3 flex items-center gap-2 text-sm font-bold text-warn-text">
+                  Verwijderen?
+                  <button type="button" onClick={() => deleteStory(story.id)} className="font-extrabold underline">
+                    Ja
                   </button>
-                  {confirmingDeleteId === story.id ? (
-                    <span className="flex items-center gap-2 text-sm font-bold text-warn-text">
-                      Verwijderen?
-                      <button type="button" onClick={() => deleteStory(story.id)} className="font-extrabold underline">
-                        Ja
-                      </button>
-                      <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
-                        Nee
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingDeleteId(story.id)}
-                      className="text-sm font-extrabold text-warn-text"
-                    >
-                      Verwijderen
-                    </button>
-                  )}
+                  <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
+                    Nee
+                  </button>
                 </div>
               )}
             </Card>
