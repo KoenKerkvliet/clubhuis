@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
-import { PrivatePill } from '@/components/ui/Pill'
+import { AuraPill, PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ArrowRightIcon, CameraIcon } from '@/components/ui/icons'
 
@@ -54,6 +54,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const { profile: viewer } = useAuth()
   const [tab, setTab] = useState<Tab>('verhalen')
   const [stories, setStories] = useState<Story[] | null>(null)
+  const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean }>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
@@ -75,7 +76,40 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
       .select('id, text, photo_path, visibility, created_at')
       .eq('author_id', profileId)
       .order('created_at', { ascending: false })
-    setStories(data ?? [])
+    const rows = data ?? []
+    setStories(rows)
+
+    if (!rows.length) {
+      setAuraByStory({})
+      return
+    }
+    const { data: auraRows } = await supabase
+      .from('story_aura')
+      .select('story_id, user_id')
+      .in(
+        'story_id',
+        rows.map((s) => s.id),
+      )
+    const map: Record<string, { count: number; mine: boolean }> = {}
+    for (const row of (auraRows ?? []) as { story_id: string; user_id: string }[]) {
+      const entry = map[row.story_id] ?? { count: 0, mine: false }
+      entry.count += 1
+      if (row.user_id === viewer?.id) entry.mine = true
+      map[row.story_id] = entry
+    }
+    setAuraByStory(map)
+  }
+
+  async function toggleAura(storyId: string) {
+    if (!viewer) return
+    const current = auraByStory[storyId] ?? { count: 0, mine: false }
+    if (current.mine) {
+      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count - 1, mine: false } }))
+      await supabase.from('story_aura').delete().eq('story_id', storyId).eq('user_id', viewer.id)
+    } else {
+      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count + 1, mine: true } }))
+      await supabase.from('story_aura').insert({ story_id: storyId, user_id: viewer.id })
+    }
   }
 
   async function loadVriendenboekje() {
@@ -185,6 +219,13 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
                 <>
                   <p className="mt-3 text-ink-700">{story.text}</p>
                   {story.photo_path && <StoryPhoto path={story.photo_path} />}
+                  <div className="mt-4 flex items-center gap-2">
+                    <AuraPill
+                      count={auraByStory[story.id]?.count ?? 0}
+                      active={auraByStory[story.id]?.mine}
+                      onClick={isOwn ? undefined : () => toggleAura(story.id)}
+                    />
+                  </div>
                 </>
               )}
 

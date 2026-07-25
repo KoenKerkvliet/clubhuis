@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { resizeImageToWebp } from '@/lib/image'
 import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { AvatarHeader, ProfileTabs } from '@/components/profile/ProfileTabs'
+import { FriendsIcon } from '@/components/ui/icons'
 
 const SWATCHES = ['bg-blue-200', 'bg-avatar-green-bg', 'bg-avatar-peach-bg', 'bg-blue-100', 'bg-avatar-sand-bg']
 const AVATAR_MAX_DIMENSION = 500
@@ -67,6 +70,13 @@ export function Me() {
         />
         {photoError && <p className="mt-2 text-sm font-semibold text-warn-text">{photoError}</p>}
       </div>
+
+      <Link to="/vrienden?tab=contacten">
+        <Button variant="secondary" className="w-full justify-start px-5">
+          <FriendsIcon width={20} height={20} />
+          Vrienden
+        </Button>
+      </Link>
 
       <Card>
         <div className="flex items-center justify-between">

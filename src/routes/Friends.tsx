@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -37,8 +37,10 @@ interface IncomingRequest {
 
 export function Friends() {
   const { profile } = useAuth()
-  const [tab, setTab] = useState<Tab>('feed')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState<Tab>(searchParams.get('tab') === 'contacten' ? 'contacten' : 'feed')
   const [stories, setStories] = useState<FeedStory[] | null>(null)
+  const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean }>>({})
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<ProfileCard[]>([])
   const [searching, setSearching] = useState(false)
@@ -69,7 +71,40 @@ export function Friends() {
       .eq('visibility', 'friends')
       .order('created_at', { ascending: false })
       .limit(20)
-    setStories((data as unknown as FeedStory[]) ?? [])
+    const rows = (data as unknown as FeedStory[]) ?? []
+    setStories(rows)
+
+    if (!rows.length) {
+      setAuraByStory({})
+      return
+    }
+    const { data: auraRows } = await supabase
+      .from('story_aura')
+      .select('story_id, user_id')
+      .in(
+        'story_id',
+        rows.map((r) => r.id),
+      )
+    const map: Record<string, { count: number; mine: boolean }> = {}
+    for (const row of (auraRows ?? []) as { story_id: string; user_id: string }[]) {
+      const entry = map[row.story_id] ?? { count: 0, mine: false }
+      entry.count += 1
+      if (row.user_id === profile?.id) entry.mine = true
+      map[row.story_id] = entry
+    }
+    setAuraByStory(map)
+  }
+
+  async function toggleAura(storyId: string) {
+    if (!profile) return
+    const current = auraByStory[storyId] ?? { count: 0, mine: false }
+    if (current.mine) {
+      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count - 1, mine: false } }))
+      await supabase.from('story_aura').delete().eq('story_id', storyId).eq('user_id', profile.id)
+    } else {
+      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count + 1, mine: true } }))
+      await supabase.from('story_aura').insert({ story_id: storyId, user_id: profile.id })
+    }
   }
 
   async function loadIncoming() {
@@ -200,7 +235,11 @@ export function Friends() {
               <p className="mt-3 text-ink-700">{story.text}</p>
               {story.photo_path && <StoryPhoto path={story.photo_path} />}
               <div className="mt-4 flex items-center gap-2">
-                <AuraPill />
+                <AuraPill
+                  count={auraByStory[story.id]?.count ?? 0}
+                  active={auraByStory[story.id]?.mine}
+                  onClick={() => toggleAura(story.id)}
+                />
                 <CommentPill count={0} />
               </div>
             </Card>
