@@ -30,7 +30,11 @@ export default defineConfig(() => {
           description: 'Een veilig herinneringenboek, geen feed.',
           theme_color: '#3F739F',
           background_color: '#F7F4EF',
-          display: 'standalone',
+          // 'standalone' (geen adresbalk) laat Android een beperktere native bestandenkiezer
+          // gebruiken voor <input type="file"> die vaak geen Galerij-app toont (alleen Camera
+          // en Bestanden) — 'minimal-ui' houdt een dun navigatiebalkje en krijgt daardoor de
+          // gewone volledige kiezer terug.
+          display: 'minimal-ui',
           orientation: 'portrait',
           scope: base,
           start_url: base,

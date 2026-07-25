@@ -30,6 +30,9 @@ export function ContactsPanel() {
   const [searching, setSearching] = useState(false)
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
   const [friends, setFriends] = useState<FriendRow[]>([])
+  // Iedereen met wie al een vriendschap bestaat of een verzoek open staat (in beide
+  // richtingen) — die hoort niet meer als zoekresultaat op te duiken.
+  const [connectedIds, setConnectedIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     if (profile) loadFriends()
@@ -39,22 +42,26 @@ export function ContactsPanel() {
     const { data } = await supabase
       .from('friendships')
       .select(
-        'requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, display_name, avatar_url), addressee:profiles!friendships_addressee_id_fkey(id, username, display_name, avatar_url)',
+        'requester_id, addressee_id, status, requester:profiles!friendships_requester_id_fkey(id, username, display_name, avatar_url), addressee:profiles!friendships_addressee_id_fkey(id, username, display_name, avatar_url)',
       )
-      .eq('status', 'accepted')
+      .in('status', ['accepted', 'pending'])
       .or(`requester_id.eq.${profile?.id},addressee_id.eq.${profile?.id}`)
 
     const rows = (data ?? []) as unknown as {
       requester_id: string
+      addressee_id: string
+      status: string
       requester: FriendRow | null
       addressee: FriendRow | null
     }[]
 
     setFriends(
       rows
+        .filter((row) => row.status === 'accepted')
         .map((row) => (row.requester_id === profile?.id ? row.addressee : row.requester))
         .filter((f): f is FriendRow => f !== null),
     )
+    setConnectedIds(new Set(rows.map((row) => (row.requester_id === profile?.id ? row.addressee_id : row.requester_id))))
   }
 
   // Live zoeken terwijl je typt (met een korte pauze) in plaats van pas na Enter: anders
@@ -90,6 +97,8 @@ export function ContactsPanel() {
     if (!error) setSentTo((prev) => new Set(prev).add(addresseeId))
   }
 
+  const visibleResults = results.filter((r) => !connectedIds.has(r.id))
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-center gap-2 rounded-pill bg-paper px-4 py-3 shadow-softer">
@@ -105,10 +114,10 @@ export function ContactsPanel() {
       {query.trim().length >= 2 && (
         <div className="flex flex-col gap-2.5">
           {searching && <p className="text-sm text-ink-400">Even zoeken...</p>}
-          {!searching && results.length === 0 && (
+          {!searching && visibleResults.length === 0 && (
             <Card className="text-center text-ink-400">Niemand gevonden met die gebruikersnaam.</Card>
           )}
-          {results.map((r) => (
+          {visibleResults.map((r) => (
             <Card key={r.id} className="flex items-center gap-3">
               <Avatar name={r.display_name} avatarPath={r.avatar_url} size={44} />
               <div className="flex-1">
