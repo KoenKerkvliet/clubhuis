@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
+import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
@@ -12,15 +13,32 @@ export function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
+  const [resendState, setResendState] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setSubmitting(true)
     setError(null)
+    setNeedsConfirmation(false)
+    setResendState('idle')
+
     const { error } = await signIn(email, password)
-    if (error) setError('Inloggen lukte niet. Klopt je e-mailadres en wachtwoord?')
+
+    if (error?.toLowerCase().includes('email not confirmed')) {
+      setNeedsConfirmation(true)
+    } else if (error) {
+      setError('Inloggen lukte niet. Klopt je e-mailadres en wachtwoord?')
+    }
+
     setSubmitting(false)
+  }
+
+  async function resendConfirmation() {
+    setResendState('sending')
+    const { error } = await supabase.auth.resend({ type: 'signup', email })
+    setResendState(error ? 'idle' : 'sent')
   }
 
   return (
@@ -49,6 +67,29 @@ export function Login() {
               onChange={(e) => setPassword(e.target.value)}
             />
             {error && <p className="text-sm text-warn-text">{error}</p>}
+
+            {needsConfirmation && (
+              <div className="rounded-card bg-warn-bg p-4">
+                <p className="font-bold text-warn-text">Je e-mailadres is nog niet bevestigd.</p>
+                <p className="mt-1 text-sm text-warn-text">
+                  Check je inbox (en je spammap) voor de link van Clubhuis, of vraag hieronder een nieuwe aan.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="mt-3"
+                  disabled={resendState !== 'idle'}
+                  onClick={resendConfirmation}
+                >
+                  {resendState === 'sent'
+                    ? 'Mail opnieuw verstuurd'
+                    : resendState === 'sending'
+                      ? 'Bezig...'
+                      : 'Stuur bevestigingsmail opnieuw'}
+                </Button>
+              </div>
+            )}
+
             <Button type="submit" disabled={submitting}>
               {submitting ? 'Bezig...' : 'Inloggen'}
             </Button>
