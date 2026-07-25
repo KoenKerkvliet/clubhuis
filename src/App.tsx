@@ -8,6 +8,7 @@ import { AdminShell } from '@/components/layout/AdminShell'
 import { Login } from '@/routes/auth/Login'
 import { Register } from '@/routes/auth/Register'
 import { ForgotPassword } from '@/routes/auth/ForgotPassword'
+import { PrivacyPolicy } from '@/routes/auth/PrivacyPolicy'
 import { ResetPassword } from '@/routes/auth/ResetPassword'
 import { PendingApproval } from '@/routes/auth/PendingApproval'
 import { ClosedScreen } from '@/routes/auth/ClosedScreen'
@@ -79,6 +80,7 @@ export function App() {
         <Route path="/registreren" element={<Register />} />
         <Route path="/inloggen" element={<Login />} />
         <Route path="/wachtwoord-vergeten" element={<ForgotPassword />} />
+        <Route path="/privacybeleid" element={<PrivacyPolicy />} />
         <Route path="*" element={<Navigate to="/inloggen" replace />} />
       </Routes>
     )

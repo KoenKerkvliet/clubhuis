@@ -27,7 +27,7 @@ export default defineConfig(() => {
         manifest: {
           name: 'Clubhuis',
           short_name: 'Clubhuis',
-          description: 'Een veilig herinneringenboek, geen feed.',
+          description: 'Een veilig herinneringenboek, geen eindeloze feed.',
           theme_color: '#3F739F',
           background_color: '#F7F4EF',
           // 'minimal-ui' gaf op Android de volledige fotokiezer (met Galerij) terug, maar

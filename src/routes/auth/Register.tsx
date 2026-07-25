@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
 import { Wordmark } from '@/components/layout/PageHeader'
+import { AuthFooter } from '@/components/layout/AuthFooter'
 
 export function Register() {
   const { signUp } = useAuth()
@@ -113,6 +114,7 @@ export function Register() {
             Log in
           </Link>
         </p>
+        <AuthFooter />
       </div>
     </div>
   )

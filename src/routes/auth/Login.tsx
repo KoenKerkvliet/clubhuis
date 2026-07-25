@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
 import { Wordmark } from '@/components/layout/PageHeader'
+import { AuthFooter } from '@/components/layout/AuthFooter'
 
 export function Login() {
   const { signIn, resendVerification } = useAuth()
@@ -44,7 +45,7 @@ export function Login() {
     <div className="flex min-h-dvh items-center justify-center bg-cream px-4">
       <div className="w-full max-w-sm">
         <Wordmark className="mb-1 text-3xl" />
-        <p className="mb-6 text-ink-400">Een veilig herinneringenboek, geen feed.</p>
+        <p className="mb-6 text-ink-400">Een veilig herinneringenboek, geen eindeloze feed.</p>
         <Card>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <Field
@@ -105,6 +106,7 @@ export function Login() {
             Registreer je hier
           </Link>
         </p>
+        <AuthFooter />
       </div>
     </div>
   )
