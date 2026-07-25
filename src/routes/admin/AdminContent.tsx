@@ -14,6 +14,7 @@ interface ContentItem {
   text: string
   created_at: string
   authorName: string
+  authorAvatarPath: string | null
   /** Alleen bij verhalen: privé of gedeeld met vrienden. */
   visibility?: string
   /** Alleen bij verhalen. */
@@ -60,7 +61,9 @@ export function AdminContent() {
     if (current === 'stories') {
       const { data } = await supabase
         .from('stories')
-        .select('id, text, photo_path, created_at, visibility, profiles!stories_author_id_fkey(display_name)')
+        .select(
+          'id, text, photo_path, created_at, visibility, profiles!stories_author_id_fkey(display_name, avatar_url)',
+        )
         .order('created_at', { ascending: false })
         .limit(50)
       setItems(
@@ -70,7 +73,7 @@ export function AdminContent() {
           photo_path: string | null
           created_at: string
           visibility: string
-          profiles: { display_name: string } | null
+          profiles: { display_name: string; avatar_url: string | null } | null
         }[]).map((row) => ({
           id: row.id,
           text: row.text,
@@ -78,6 +81,7 @@ export function AdminContent() {
           created_at: row.created_at,
           visibility: row.visibility,
           authorName: row.profiles?.display_name ?? 'Onbekend',
+          authorAvatarPath: row.profiles?.avatar_url ?? null,
         })),
       )
       return
@@ -86,7 +90,7 @@ export function AdminContent() {
     if (current === 'comments') {
       const { data } = await supabase
         .from('story_comments')
-        .select('id, text, created_at, profiles!story_comments_author_id_fkey(display_name)')
+        .select('id, text, created_at, profiles!story_comments_author_id_fkey(display_name, avatar_url)')
         .order('created_at', { ascending: false })
         .limit(50)
       setItems(
@@ -94,12 +98,13 @@ export function AdminContent() {
           id: string
           text: string
           created_at: string
-          profiles: { display_name: string } | null
+          profiles: { display_name: string; avatar_url: string | null } | null
         }[]).map((row) => ({
           id: row.id,
           text: row.text,
           created_at: row.created_at,
           authorName: row.profiles?.display_name ?? 'Onbekend',
+          authorAvatarPath: row.profiles?.avatar_url ?? null,
         })),
       )
       return
@@ -108,7 +113,7 @@ export function AdminContent() {
     const { data } = await supabase
       .from('scribbles')
       .select(
-        'id, text, created_at, author:profiles!scribbles_author_id_fkey(display_name), owner:profiles!scribbles_profile_id_fkey(display_name)',
+        'id, text, created_at, author:profiles!scribbles_author_id_fkey(display_name, avatar_url), owner:profiles!scribbles_profile_id_fkey(display_name)',
       )
       .order('created_at', { ascending: false })
       .limit(50)
@@ -117,13 +122,14 @@ export function AdminContent() {
         id: string
         text: string
         created_at: string
-        author: { display_name: string } | null
+        author: { display_name: string; avatar_url: string | null } | null
         owner: { display_name: string } | null
       }[]).map((row) => ({
         id: row.id,
         text: row.text,
         created_at: row.created_at,
         authorName: row.author?.display_name ?? 'Onbekend',
+        authorAvatarPath: row.author?.avatar_url ?? null,
         context: row.owner?.display_name ? `op het plekje van ${row.owner.display_name}` : undefined,
       })),
     )
@@ -165,7 +171,7 @@ export function AdminContent() {
         {items?.map((item) => (
           <Card key={item.id}>
             <div className="flex items-center gap-3">
-              <Avatar name={item.authorName} size={40} />
+              <Avatar name={item.authorName} avatarPath={item.authorAvatarPath} size={40} />
               <div className="min-w-0 flex-1">
                 <p className="font-extrabold text-ink-900">{item.authorName}</p>
                 <p className="truncate text-xs font-semibold text-ink-400">

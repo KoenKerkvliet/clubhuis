@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
-import { ArrowRightIcon } from '@/components/ui/icons'
+import { ArrowRightIcon, CameraIcon } from '@/components/ui/icons'
 
 type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels'
 
@@ -284,10 +284,43 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   )
 }
 
-export function AvatarHeader({ displayName, username, meta }: { displayName: string; username: string; meta?: string }) {
+export function AvatarHeader({
+  displayName,
+  username,
+  meta,
+  avatarPath,
+  onPhotoChange,
+  photoBusy,
+}: {
+  displayName: string
+  username: string
+  meta?: string
+  avatarPath?: string | null
+  /** Alleen op de eigen pagina: toont een bewerk-badge waarmee een nieuwe foto gekozen kan worden. */
+  onPhotoChange?: (file: File) => void
+  photoBusy?: boolean
+}) {
   return (
     <div className="flex items-center gap-4">
-      <Avatar name={displayName} size={64} />
+      <div className="relative shrink-0">
+        <Avatar name={displayName} avatarPath={avatarPath} size={64} />
+        {onPhotoChange && (
+          <label className="absolute -bottom-1 -right-1 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border-2 border-cream bg-blue-500 text-paper transition-transform active:scale-95">
+            <CameraIcon width={13} height={13} />
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={photoBusy}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) onPhotoChange(file)
+              }}
+            />
+          </label>
+        )}
+      </div>
       <div>
         <h1 className="text-2xl font-extrabold text-ink-900">{displayName}</h1>
         <p className="text-sm font-semibold text-ink-400">

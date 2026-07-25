@@ -16,8 +16,13 @@ interface Notification {
   created_at: string
 }
 
-interface ActorNames {
-  [userId: string]: string
+interface ActorInfo {
+  name: string
+  avatarPath: string | null
+}
+
+interface Actors {
+  [userId: string]: ActorInfo
 }
 
 const ICONS: Record<string, { Icon: typeof AuraIcon; bg: string; text: string }> = {
@@ -39,7 +44,7 @@ export function Notifications() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const [items, setItems] = useState<Notification[] | null>(null)
-  const [names, setNames] = useState<ActorNames>({})
+  const [actors, setActors] = useState<Actors>({})
 
   useEffect(() => {
     if (!profile) return
@@ -58,10 +63,13 @@ export function Notifications() {
 
     const actorIds = [...new Set(rows.map((r) => r.payload?.from).filter((v): v is string => !!v))]
     if (actorIds.length) {
-      const { data: profiles } = await supabase.from('profile_cards').select('id, display_name').in('id', actorIds)
-      const map: ActorNames = {}
-      for (const p of profiles ?? []) if (p.id) map[p.id] = p.display_name ?? 'Iemand'
-      setNames(map)
+      const { data: profiles } = await supabase
+        .from('profile_cards')
+        .select('id, display_name, avatar_url')
+        .in('id', actorIds)
+      const map: Actors = {}
+      for (const p of profiles ?? []) if (p.id) map[p.id] = { name: p.display_name ?? 'Iemand', avatarPath: p.avatar_url }
+      setActors(map)
     }
 
     await supabase.from('notifications').update({ read: true }).eq('user_id', profile?.id ?? '').eq('read', false)
@@ -73,7 +81,7 @@ export function Notifications() {
   }
 
   function describe(n: Notification) {
-    const actor = n.payload?.from ? names[n.payload.from] ?? 'Iemand' : 'Iemand'
+    const actor = n.payload?.from ? actors[n.payload.from]?.name ?? 'Iemand' : 'Iemand'
     switch (n.type) {
       case 'aura':
         return { actor, rest: 'gaf Aura aan je verhaal.' }
@@ -103,11 +111,12 @@ export function Notifications() {
 
         {items?.map((n) => {
           if (n.type === 'friend_request') {
-            const actor = n.payload.from ? names[n.payload.from] ?? 'Iemand' : 'Iemand'
+            const actorInfo = n.payload.from ? actors[n.payload.from] : undefined
+            const actor = actorInfo?.name ?? 'Iemand'
             return (
               <Card key={n.id}>
                 <div className="flex items-center gap-3">
-                  <Avatar name={actor} size={44} />
+                  <Avatar name={actor} avatarPath={actorInfo?.avatarPath} size={44} />
                   <div>
                     <p className="text-ink-900">
                       <span className="font-extrabold">{actor}</span> wil vrienden worden.

@@ -18,7 +18,7 @@ interface ProfileCard {
 interface IncomingRequest {
   id: string
   requester_id: string
-  profiles: { username: string; display_name: string } | null
+  profiles: { username: string; display_name: string; avatar_url: string | null } | null
 }
 
 export function Friends() {
@@ -28,7 +28,9 @@ export function Friends() {
   const [searching, setSearching] = useState(false)
   const [sentTo, setSentTo] = useState<Set<string>>(new Set())
   const [incoming, setIncoming] = useState<IncomingRequest[]>([])
-  const [friends, setFriends] = useState<{ id: string; display_name: string; username: string }[]>([])
+  const [friends, setFriends] = useState<{ id: string; display_name: string; username: string; avatar_url: string | null }[]>(
+    [],
+  )
 
   useEffect(() => {
     if (profile) {
@@ -40,7 +42,7 @@ export function Friends() {
   async function loadIncoming() {
     const { data } = await supabase
       .from('friendships')
-      .select('id, requester_id, profiles!friendships_requester_id_fkey(username, display_name)')
+      .select('id, requester_id, profiles!friendships_requester_id_fkey(username, display_name, avatar_url)')
       .eq('status', 'pending')
       .eq('addressee_id', profile?.id ?? '')
     setIncoming((data as unknown as IncomingRequest[]) ?? [])
@@ -50,21 +52,23 @@ export function Friends() {
     const { data } = await supabase
       .from('friendships')
       .select(
-        'requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, display_name), addressee:profiles!friendships_addressee_id_fkey(id, username, display_name)',
+        'requester_id, addressee_id, requester:profiles!friendships_requester_id_fkey(id, username, display_name, avatar_url), addressee:profiles!friendships_addressee_id_fkey(id, username, display_name, avatar_url)',
       )
       .eq('status', 'accepted')
       .or(`requester_id.eq.${profile?.id},addressee_id.eq.${profile?.id}`)
 
     const rows = (data ?? []) as unknown as {
       requester_id: string
-      requester: { id: string; username: string; display_name: string } | null
-      addressee: { id: string; username: string; display_name: string } | null
+      requester: { id: string; username: string; display_name: string; avatar_url: string | null } | null
+      addressee: { id: string; username: string; display_name: string; avatar_url: string | null } | null
     }[]
 
     setFriends(
       rows
         .map((row) => (row.requester_id === profile?.id ? row.addressee : row.requester))
-        .filter((f): f is { id: string; username: string; display_name: string } => f !== null),
+        .filter(
+          (f): f is { id: string; username: string; display_name: string; avatar_url: string | null } => f !== null,
+        ),
     )
   }
 
@@ -125,7 +129,7 @@ export function Friends() {
         <div key={req.id} className="rounded-card bg-blue-100 p-5">
           <p className="text-xs font-extrabold uppercase tracking-wide text-blue-500">1 verzoek</p>
           <div className="mt-3 flex items-center gap-3">
-            <Avatar name={req.profiles?.display_name ?? '?'} size={44} />
+            <Avatar name={req.profiles?.display_name ?? '?'} avatarPath={req.profiles?.avatar_url} size={44} />
             <div>
               <p className="font-extrabold text-ink-900">{req.profiles?.display_name}</p>
               <p className="text-sm font-semibold text-ink-400">@{req.profiles?.username}</p>
@@ -148,7 +152,7 @@ export function Friends() {
           )}
           {results.map((r) => (
             <Card key={r.id} className="flex items-center gap-3">
-              <Avatar name={r.display_name} size={44} />
+              <Avatar name={r.display_name} avatarPath={r.avatar_url} size={44} />
               <div className="flex-1">
                 <p className="font-extrabold text-ink-900">{r.display_name}</p>
                 <p className="text-sm font-semibold text-ink-400">@{r.username}</p>
@@ -167,7 +171,7 @@ export function Friends() {
         {friends.map((friend) => (
           <Link key={friend.id} to={`/vrienden/${friend.username}`}>
             <Card className="flex items-center gap-3">
-              <Avatar name={friend.display_name} size={44} />
+              <Avatar name={friend.display_name} avatarPath={friend.avatar_url} size={44} />
               <div className="flex-1">
                 <p className="font-extrabold text-ink-900">{friend.display_name}</p>
               </div>

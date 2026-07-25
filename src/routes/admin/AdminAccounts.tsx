@@ -15,6 +15,7 @@ type ProfileRow = {
   role: string
   status: string
   created_at: string
+  avatar_url: string | null
 }
 
 const STATUS_FILTERS = [
@@ -64,7 +65,7 @@ export function AdminAccounts() {
     setRows(null)
     let query = supabase
       .from('profiles')
-      .select('id, username, display_name, role, status, created_at')
+      .select('id, username, display_name, role, status, created_at, avatar_url')
       .order('created_at', { ascending: false })
     if (statusFilter !== 'all') query = query.eq('status', statusFilter)
     const { data } = await query
@@ -140,7 +141,7 @@ export function AdminAccounts() {
         {visible?.map((row) => (
           <Card key={row.id}>
             <div className="flex items-start gap-3">
-              <Avatar name={row.display_name} size={48} />
+              <Avatar name={row.display_name} avatarPath={row.avatar_url} size={48} />
               <div className="min-w-0 flex-1">
                 <p className="font-extrabold text-ink-900">{row.display_name}</p>
                 <p className="truncate text-sm font-semibold text-ink-400">@{row.username}</p>

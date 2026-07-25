@@ -80,7 +80,7 @@ export function Today() {
         {stories?.map((story) => (
           <Card key={story.id}>
             <div className="flex items-center gap-3">
-              <Avatar name={story.profiles?.display_name ?? '?'} size={40} />
+              <Avatar name={story.profiles?.display_name ?? '?'} avatarPath={story.profiles?.avatar_url} size={40} />
               <div>
                 <p className="font-extrabold text-ink-900">{story.profiles?.display_name ?? 'Onbekend'}</p>
                 <p className="text-xs font-semibold text-ink-400">

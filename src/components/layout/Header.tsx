@@ -33,8 +33,8 @@ export function Header() {
   }, [])
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-blue-100/70 bg-cream/95 px-4 py-3 backdrop-blur">
-      <Link to="/vandaag" className="flex items-center gap-2">
+    <header className="sticky top-0 z-20 flex items-center justify-between border-b border-blue-100/70 bg-cream/95 px-4 py-3 backdrop-blur md:justify-end md:px-8">
+      <Link to="/vandaag" className="flex items-center gap-2 md:hidden">
         <LogoMark size={26} />
         <span className="text-lg font-extrabold text-ink-900">Clubhuis</span>
       </Link>
@@ -51,7 +51,7 @@ export function Header() {
             aria-label="Profielmenu"
             className="block rounded-squircle transition-transform active:scale-95"
           >
-            <Avatar name={profile?.display_name ?? '?'} size={40} />
+            <Avatar name={profile?.display_name ?? '?'} avatarPath={profile?.avatar_url} size={40} />
           </button>
 
           {menuOpen && (

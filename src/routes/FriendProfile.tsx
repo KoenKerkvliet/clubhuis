@@ -10,6 +10,7 @@ interface Profile {
   id: string
   username: string
   display_name: string
+  avatar_url: string | null
 }
 
 export function FriendProfile() {
@@ -20,7 +21,7 @@ export function FriendProfile() {
     if (!username) return
     supabase
       .from('profile_cards')
-      .select('id, username, display_name')
+      .select('id, username, display_name, avatar_url')
       .eq('username', username)
       .maybeSingle()
       .then(({ data }) => setProfile(data as Profile | null))
@@ -40,7 +41,7 @@ export function FriendProfile() {
           </Pill>
         }
       />
-      <AvatarHeader displayName={profile.display_name} username={profile.username} />
+      <AvatarHeader displayName={profile.display_name} username={profile.username} avatarPath={profile.avatar_url} />
       <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn={false} />
     </div>
   )

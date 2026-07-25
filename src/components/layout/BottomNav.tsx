@@ -26,7 +26,7 @@ function NavItem({ to, label, Icon }: { to: string; label: string; Icon: typeof 
 
 export function BottomNav() {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-blue-100/70 bg-paper pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_-16px_rgb(38_33_58/0.25)]">
+    <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-blue-100/70 bg-paper pb-[env(safe-area-inset-bottom)] shadow-[0_-6px_20px_-16px_rgb(38_33_58/0.25)] md:hidden">
       <ul className="mx-auto flex max-w-md items-center justify-between px-3 py-2.5">
         {links.map((link) => (
           <li key={link.to}>
