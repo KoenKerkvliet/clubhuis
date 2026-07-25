@@ -279,6 +279,7 @@ export type Database = {
           id: string
           role: string
           status: string
+          status_message: string | null
           updated_at: string
           username: string
         }
@@ -289,6 +290,7 @@ export type Database = {
           id: string
           role?: string
           status?: string
+          status_message?: string | null
           updated_at?: string
           username: string
         }
@@ -299,6 +301,7 @@ export type Database = {
           id?: string
           role?: string
           status?: string
+          status_message?: string | null
           updated_at?: string
           username?: string
         }
@@ -505,18 +508,21 @@ export type Database = {
           avatar_url: string | null
           display_name: string | null
           id: string | null
+          status_message: string | null
           username: string | null
         }
         Insert: {
           avatar_url?: string | null
           display_name?: string | null
           id?: string | null
+          status_message?: string | null
           username?: string | null
         }
         Update: {
           avatar_url?: string | null
           display_name?: string | null
           id?: string | null
+          status_message?: string | null
           username?: string | null
         }
         Relationships: []

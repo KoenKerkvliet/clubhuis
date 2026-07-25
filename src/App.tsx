@@ -14,6 +14,7 @@ import { Feed } from '@/routes/Feed'
 import { FriendProfile } from '@/routes/FriendProfile'
 import { Tell } from '@/routes/Tell'
 import { Me } from '@/routes/Me'
+import { Profile } from '@/routes/Profile'
 import { Notifications } from '@/routes/Notifications'
 import { AdminOverview } from '@/routes/admin/AdminOverview'
 import { AdminAccounts } from '@/routes/admin/AdminAccounts'
@@ -89,6 +90,7 @@ export function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route path="/ik" element={<Me />} />
+        <Route path="/profiel" element={<Profile />} />
         <Route path="/verhalen" element={<Feed />} />
         <Route path="/verhalen/:username" element={<FriendProfile />} />
         <Route path="/vertellen" element={<Tell />} />

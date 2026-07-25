@@ -1,7 +1,7 @@
 import type { InputHTMLAttributes } from 'react'
 
 interface FieldProps extends InputHTMLAttributes<HTMLInputElement> {
-  label: string
+  label?: string
 }
 
 export function Field({ label, id, className = '', ...props }: FieldProps) {

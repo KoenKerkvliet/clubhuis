@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -13,7 +14,7 @@ import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/
 
 const MAX_FAVORITES = 20
 
-type Tab = 'verhalen' | 'vriendenboekje' | 'krabbels' | 'vrienden'
+type Tab = 'verhalen' | 'overmij' | 'krabbels' | 'vrienden' | 'herinneringen'
 
 interface Story {
   id: string
@@ -56,18 +57,7 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString('nl-NL', { month: 'long' })
 }
 
-export function ProfileTabs({
-  profileId,
-  displayName,
-  isOwn,
-  onFavoriteChange,
-}: {
-  profileId: string
-  displayName: string
-  isOwn: boolean
-  /** Alleen relevant op de eigen pagina: laat Me.tsx het "mooiste herinneringen"-kaartje verversen. */
-  onFavoriteChange?: () => void
-}) {
+export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: string; displayName: string; isOwn: boolean }) {
   const { profile: viewer } = useAuth()
   const [tab, setTab] = useState<Tab>('verhalen')
   const [stories, setStories] = useState<Story[] | null>(null)
@@ -85,8 +75,8 @@ export function ProfileTabs({
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (tab === 'verhalen') loadStories()
-    if (tab === 'vriendenboekje') loadVriendenboekje()
+    if (tab === 'verhalen' || tab === 'herinneringen') loadStories()
+    if (tab === 'overmij') loadVriendenboekje()
     if (tab === 'krabbels') loadScribbles()
   }, [tab, profileId])
 
@@ -148,7 +138,6 @@ export function ProfileTabs({
 
     setStories((prev) => prev?.map((s) => (s.id === story.id ? { ...s, is_favorite: nextValue } : s)) ?? null)
     await supabase.from('stories').update({ is_favorite: nextValue }).eq('id', story.id)
-    onFavoriteChange?.()
   }
 
   async function loadVriendenboekje() {
@@ -227,12 +216,136 @@ export function ProfileTabs({
 
   const tabOptions: { value: Tab; label: string }[] = [
     { value: 'verhalen', label: 'Verhalen' },
-    { value: 'vriendenboekje', label: 'Vriendenboekje' },
+    { value: 'overmij', label: 'Over mij' },
     { value: 'krabbels', label: 'Krabbels' },
   ]
-  if (isOwn) tabOptions.push({ value: 'vrienden', label: 'Vrienden' })
+  if (isOwn) {
+    tabOptions.push({ value: 'vrienden', label: 'Vrienden' })
+    tabOptions.push({ value: 'herinneringen', label: 'Herinneringen' })
+  }
 
   const favoriteCount = stories?.filter((s) => s.is_favorite).length ?? 0
+  const favoriteStories = stories?.filter((s) => s.is_favorite) ?? null
+
+  function renderStoryCard(story: Story): ReactNode {
+    return (
+      <Card key={story.id} className="relative">
+        {isOwn && editingId !== story.id && (
+          <div className="absolute right-3 top-3" ref={openMenuId === story.id ? menuRef : undefined}>
+            <button
+              type="button"
+              onClick={() => setOpenMenuId(openMenuId === story.id ? null : story.id)}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-blue-50"
+              aria-label="Opties voor dit bericht"
+            >
+              <MoreIcon width={18} height={18} />
+            </button>
+            {openMenuId === story.id && (
+              <div className="absolute right-0 top-9 z-10 w-40 rounded-card bg-paper p-1.5 shadow-soft">
+                <button
+                  type="button"
+                  onClick={() => {
+                    startEdit(story)
+                    setOpenMenuId(null)
+                  }}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                >
+                  Bewerken
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmingDeleteId(story.id)
+                    setOpenMenuId(null)
+                  }}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-warn-text transition-colors hover:bg-warn-bg"
+                >
+                  Verwijderen
+                </button>
+                {story.is_favorite ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleFavorite(story)
+                      setOpenMenuId(null)
+                    }}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                  >
+                    Verwijder uit mooiste herinneringen
+                  </button>
+                ) : favoriteCount >= MAX_FAVORITES ? (
+                  <p className="px-3 py-2 text-left text-sm font-bold text-ink-400">Max. 20 bereikt</p>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      toggleFavorite(story)
+                      setOpenMenuId(null)
+                    }}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+                  >
+                    Voeg toe aan mooiste herinneringen
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {story.visibility === 'private' ? (
+          <PrivatePill time={new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} />
+        ) : (
+          <p className="pr-8 text-xs font-bold text-ink-400">
+            {new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} · Gedeeld met vrienden
+          </p>
+        )}
+
+        {editingId === story.id ? (
+          <div className="mt-3 flex flex-col gap-2">
+            <textarea
+              className="w-full resize-none rounded-2xl border border-blue-200 bg-paper p-3 text-ink-700 outline-none focus:border-blue-400"
+              rows={3}
+              maxLength={2000}
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button onClick={() => saveEdit(story.id)} disabled={!editText.trim()}>
+                Opslaan
+              </Button>
+              <Button variant="muted" onClick={() => setEditingId(null)}>
+                Annuleren
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <p className="mt-3 text-ink-700">{story.text}</p>
+            {story.photo_path && <StoryPhoto path={story.photo_path} />}
+            <div className="mt-4 flex items-center gap-2">
+              <AuraPill
+                count={auraByStory[story.id]?.count ?? 0}
+                active={auraByStory[story.id]?.mine}
+                onClick={isOwn ? undefined : () => toggleAura(story.id)}
+              />
+            </div>
+          </>
+        )}
+
+        {isOwn && confirmingDeleteId === story.id && (
+          <div className="mt-3 flex items-center gap-2 text-sm font-bold text-warn-text">
+            Verwijderen?
+            <button type="button" onClick={() => deleteStory(story.id)} className="font-extrabold underline">
+              Ja
+            </button>
+            <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
+              Nee
+            </button>
+          </div>
+        )}
+      </Card>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4">
@@ -251,127 +364,11 @@ export function ProfileTabs({
 
           {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
           {stories?.length === 0 && <Card className="text-center text-ink-400">Nog geen verhalen.</Card>}
-          {stories?.map((story) => (
-            <Card key={story.id} className="relative">
-              {isOwn && editingId !== story.id && (
-                <div className="absolute right-3 top-3" ref={openMenuId === story.id ? menuRef : undefined}>
-                  <button
-                    type="button"
-                    onClick={() => setOpenMenuId(openMenuId === story.id ? null : story.id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-ink-400 transition-colors hover:bg-blue-50"
-                    aria-label="Opties voor dit bericht"
-                  >
-                    <MoreIcon width={18} height={18} />
-                  </button>
-                  {openMenuId === story.id && (
-                    <div className="absolute right-0 top-9 z-10 w-40 rounded-card bg-paper p-1.5 shadow-soft">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          startEdit(story)
-                          setOpenMenuId(null)
-                        }}
-                        className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
-                      >
-                        Bewerken
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setConfirmingDeleteId(story.id)
-                          setOpenMenuId(null)
-                        }}
-                        className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-warn-text transition-colors hover:bg-warn-bg"
-                      >
-                        Verwijderen
-                      </button>
-                      {story.is_favorite ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            toggleFavorite(story)
-                            setOpenMenuId(null)
-                          }}
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
-                        >
-                          Verwijder uit mooiste herinneringen
-                        </button>
-                      ) : favoriteCount >= MAX_FAVORITES ? (
-                        <p className="px-3 py-2 text-left text-sm font-bold text-ink-400">Max. 20 bereikt</p>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            toggleFavorite(story)
-                            setOpenMenuId(null)
-                          }}
-                          className="block w-full rounded-lg px-3 py-2 text-left text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
-                        >
-                          Voeg toe aan mooiste herinneringen
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {story.visibility === 'private' ? (
-                <PrivatePill time={new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} />
-              ) : (
-                <p className="pr-8 text-xs font-bold text-ink-400">
-                  {new Date(story.created_at).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })} · Gedeeld met vrienden
-                </p>
-              )}
-
-              {editingId === story.id ? (
-                <div className="mt-3 flex flex-col gap-2">
-                  <textarea
-                    className="w-full resize-none rounded-2xl border border-blue-200 bg-paper p-3 text-ink-700 outline-none focus:border-blue-400"
-                    rows={3}
-                    maxLength={2000}
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                  />
-                  <div className="flex gap-2">
-                    <Button onClick={() => saveEdit(story.id)} disabled={!editText.trim()}>
-                      Opslaan
-                    </Button>
-                    <Button variant="muted" onClick={() => setEditingId(null)}>
-                      Annuleren
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <p className="mt-3 text-ink-700">{story.text}</p>
-                  {story.photo_path && <StoryPhoto path={story.photo_path} />}
-                  <div className="mt-4 flex items-center gap-2">
-                    <AuraPill
-                      count={auraByStory[story.id]?.count ?? 0}
-                      active={auraByStory[story.id]?.mine}
-                      onClick={isOwn ? undefined : () => toggleAura(story.id)}
-                    />
-                  </div>
-                </>
-              )}
-
-              {isOwn && confirmingDeleteId === story.id && (
-                <div className="mt-3 flex items-center gap-2 text-sm font-bold text-warn-text">
-                  Verwijderen?
-                  <button type="button" onClick={() => deleteStory(story.id)} className="font-extrabold underline">
-                    Ja
-                  </button>
-                  <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
-                    Nee
-                  </button>
-                </div>
-              )}
-            </Card>
-          ))}
+          {stories?.map(renderStoryCard)}
         </div>
       )}
 
-      {tab === 'vriendenboekje' && (
+      {tab === 'overmij' && (
         <div className="flex flex-col gap-3">
           {questions.map((q) => {
             const answer = answers.find((a) => a.question_id === q.id)?.answer ?? ''
@@ -472,6 +469,25 @@ export function ProfileTabs({
       )}
 
       {tab === 'vrienden' && <ContactsPanel />}
+
+      {tab === 'herinneringen' && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="font-extrabold text-ink-900">Mijn mooiste herinneringen</p>
+            <p className="text-sm font-bold text-ink-400">
+              {favoriteCount} van {MAX_FAVORITES}
+            </p>
+          </div>
+
+          {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+          {favoriteStories?.length === 0 && (
+            <Card className="text-center text-ink-400">
+              Nog geen herinneringen gekozen — markeer een verhaal via de puntjes bij "Verhalen".
+            </Card>
+          )}
+          {favoriteStories?.map(renderStoryCard)}
+        </div>
+      )}
     </div>
   )
 }
@@ -481,6 +497,7 @@ export function AvatarHeader({
   username,
   meta,
   avatarPath,
+  statusMessage,
   onPhotoChange,
   photoBusy,
 }: {
@@ -488,6 +505,8 @@ export function AvatarHeader({
   username: string
   meta?: string
   avatarPath?: string | null
+  /** Kort zelfgekozen zinnetje, getoond naast de naam in een ander lettertype. */
+  statusMessage?: string | null
   /** Alleen op de eigen pagina: toont een bewerk-badge waarmee een nieuwe foto gekozen kan worden. */
   onPhotoChange?: (file: File) => void
   photoBusy?: boolean
@@ -514,7 +533,10 @@ export function AvatarHeader({
         )}
       </div>
       <div>
-        <h1 className="text-2xl font-extrabold text-ink-900">{displayName}</h1>
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <h1 className="text-2xl font-extrabold text-ink-900">{displayName}</h1>
+          {statusMessage && <span className="font-hand text-xl text-ink-400">{statusMessage}</span>}
+        </div>
         <p className="text-sm font-semibold text-ink-400">
           @{username}
           {meta ? ` · ${meta}` : ''}

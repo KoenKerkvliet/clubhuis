@@ -58,11 +58,11 @@ export function Header() {
             <div className="absolute right-0 top-12 z-30 w-48 rounded-card bg-paper p-2 shadow-soft">
               <p className="truncate px-3 py-2 text-sm font-extrabold text-ink-900">{profile?.display_name}</p>
               <Link
-                to="/ik"
+                to="/profiel"
                 onClick={() => setMenuOpen(false)}
                 className="block rounded-lg px-3 py-2 text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
               >
-                Mijn plekje
+                Profiel
               </Link>
               <button
                 type="button"
