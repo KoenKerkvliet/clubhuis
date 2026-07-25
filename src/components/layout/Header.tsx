@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Avatar } from '@/components/ui/Avatar'
 import { IconButton } from '@/components/ui/IconButton'
 import { LogoMark } from '@/components/ui/LogoMark'
-import { BellIcon } from '@/components/ui/icons'
+import { BellIcon, ShareIcon } from '@/components/ui/icons'
 
 export function Header() {
   const { profile, signOut } = useAuth()
@@ -63,6 +63,14 @@ export function Header() {
                 className="block rounded-lg px-3 py-2 text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
               >
                 Profiel
+              </Link>
+              <Link
+                to="/delen"
+                onClick={() => setMenuOpen(false)}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-ink-700 transition-colors hover:bg-blue-50"
+              >
+                <ShareIcon width={16} height={16} />
+                Delen
               </Link>
               <button
                 type="button"

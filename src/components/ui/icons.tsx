@@ -217,6 +217,47 @@ export function ShieldIcon(props: SVGProps<SVGSVGElement>) {
   )
 }
 
+export function ShareIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <circle cx="18" cy="6" r="2.3" />
+      <circle cx="6" cy="12" r="2.3" />
+      <circle cx="18" cy="18" r="2.3" />
+      <path d="M8.1 10.8 15.9 7.2M8.1 13.2l7.8 3.6" />
+    </svg>
+  )
+}
+
+export function MailIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="5.5" width="17" height="13" rx="2.5" />
+      <path d="M4.5 7 12 13l7.5-6" />
+    </svg>
+  )
+}
+
+export function LinkIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <path d="M9.5 14.5 14.5 9.5" />
+      <path d="M11 7.5 12.6 6a3.6 3.6 0 0 1 5 5l-1.5 1.6" />
+      <path d="M13 16.5 11.4 18a3.6 3.6 0 0 1-5-5l1.5-1.6" />
+    </svg>
+  )
+}
+
+export function QrCodeIcon(props: SVGProps<SVGSVGElement>) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3.5" y="3.5" width="6.5" height="6.5" rx="1.2" />
+      <rect x="14" y="3.5" width="6.5" height="6.5" rx="1.2" />
+      <rect x="3.5" y="14" width="6.5" height="6.5" rx="1.2" />
+      <path d="M14 14h3v3M20.5 17.5v3M17 20.5h3.5" />
+    </svg>
+  )
+}
+
 export function UsersCogIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg {...base(props)}>
