@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { AvatarHeader, ProfileTabs } from '@/components/profile/ProfileTabs'
-import { ShieldIcon } from '@/components/ui/icons'
 
 const SWATCHES = ['bg-blue-200', 'bg-avatar-green-bg', 'bg-avatar-peach-bg', 'bg-blue-100', 'bg-avatar-sand-bg']
 
@@ -50,15 +48,6 @@ export function Me() {
       </Card>
 
       <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn />
-
-      {profile.role === 'beheerder' && (
-        <Link to="/admin">
-          <Button variant="secondary" className="w-full">
-            <ShieldIcon width={18} height={18} />
-            Beheeromgeving
-          </Button>
-        </Link>
-      )}
 
       <Button variant="ghost" onClick={() => signOut()}>
         Uitloggen

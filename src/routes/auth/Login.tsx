@@ -55,6 +55,11 @@ export function Login() {
           </form>
         </Card>
         <p className="mt-4 text-center text-sm text-ink-400">
+          <Link to="/wachtwoord-vergeten" className="font-extrabold text-blue-500">
+            Wachtwoord vergeten?
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-sm text-ink-400">
           Nog geen account?{' '}
           <Link to="/registreren" className="font-extrabold text-blue-500">
             Registreer je hier
