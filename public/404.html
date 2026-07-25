@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Clubhuis</title>
+    <script type="text/javascript">
+      // GitHub Pages heeft geen server-side rewrites voor een SPA: een directe load van
+      // bv. /verhalen komt hier als 404 uit. We coderen het pad in de querystring en sturen
+      // door naar index.html, dat 'm er in de <head> weer uithaalt vóórdat React Router
+      // gaat routeren. Patroon: https://github.com/rafgraph/spa-github-pages
+      var l = window.location
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/?/' +
+          l.pathname.slice(1).replace(/&/g, '~and~') +
+          (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+          l.hash,
+      )
+    </script>
+  </head>
+  <body></body>
+</html>

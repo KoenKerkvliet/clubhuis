@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { resizeImageToWebp } from '@/lib/image'
@@ -9,23 +9,8 @@ const AVATAR_QUALITY = 0.8
 
 export function Me() {
   const { profile, refreshProfile } = useAuth()
-  const [counts, setCounts] = useState({ stories: 0, friends: 0 })
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!profile) return
-    Promise.all([
-      supabase.from('stories').select('id', { count: 'exact', head: true }).eq('author_id', profile.id),
-      supabase
-        .from('friendships')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'accepted')
-        .or(`requester_id.eq.${profile.id},addressee_id.eq.${profile.id}`),
-    ]).then(([stories, friends]) => {
-      setCounts({ stories: stories.count ?? 0, friends: friends.count ?? 0 })
-    })
-  }, [profile])
 
   async function handleAvatarChange(file: File) {
     if (!profile) return
@@ -58,7 +43,6 @@ export function Me() {
         <AvatarHeader
           displayName={profile.display_name}
           username={profile.username}
-          meta={`${counts.stories} verhalen · ${counts.friends} vrienden`}
           avatarPath={profile.avatar_url}
           statusMessage={profile.status_message}
           onPhotoChange={handleAvatarChange}

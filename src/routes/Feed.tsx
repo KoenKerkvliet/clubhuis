@@ -47,7 +47,7 @@ export function Feed() {
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [stories, setStories] = useState<FeedStory[] | null>(null)
-  const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean }>>({})
+  const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean; names: string[] }>>({})
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set())
   const [commentsByStory, setCommentsByStory] = useState<Record<string, Comment[]>>({})
   const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
@@ -127,11 +127,24 @@ export function Feed() {
         .order('created_at', { ascending: true }),
     ])
 
-    const auraMap: Record<string, { count: number; mine: boolean }> = {}
-    for (const row of (auraRows ?? []) as { story_id: string; user_id: string }[]) {
-      const entry = auraMap[row.story_id] ?? { count: 0, mine: false }
+    const giverRows = (auraRows ?? []) as { story_id: string; user_id: string }[]
+    const { data: giverProfiles } = giverRows.length
+      ? await supabase
+          .from('profile_cards')
+          .select('id, display_name')
+          .in(
+            'id',
+            [...new Set(giverRows.map((r) => r.user_id))],
+          )
+      : { data: [] }
+    const nameById = new Map((giverProfiles ?? []).map((p) => [p.id, p.display_name ?? 'Iemand']))
+
+    const auraMap: Record<string, { count: number; mine: boolean; names: string[] }> = {}
+    for (const row of giverRows) {
+      const entry = auraMap[row.story_id] ?? { count: 0, mine: false, names: [] }
       entry.count += 1
       if (row.user_id === profile.id) entry.mine = true
+      entry.names.push(nameById.get(row.user_id) ?? 'Iemand')
       auraMap[row.story_id] = entry
     }
     setAuraByStory(auraMap)
@@ -147,12 +160,18 @@ export function Feed() {
 
   async function toggleAura(storyId: string) {
     if (!profile) return
-    const current = auraByStory[storyId] ?? { count: 0, mine: false }
+    const current = auraByStory[storyId] ?? { count: 0, mine: false, names: [] }
     if (current.mine) {
-      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count - 1, mine: false } }))
+      setAuraByStory((prev) => ({
+        ...prev,
+        [storyId]: { count: current.count - 1, mine: false, names: current.names.filter((n) => n !== profile.display_name) },
+      }))
       await supabase.from('story_aura').delete().eq('story_id', storyId).eq('user_id', profile.id)
     } else {
-      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count + 1, mine: true } }))
+      setAuraByStory((prev) => ({
+        ...prev,
+        [storyId]: { count: current.count + 1, mine: true, names: [...current.names, profile.display_name] },
+      }))
       await supabase.from('story_aura').insert({ story_id: storyId, user_id: profile.id })
     }
   }
@@ -438,6 +457,7 @@ export function Feed() {
                     <AuraPill
                       count={auraByStory[story.id]?.count ?? 0}
                       active={auraByStory[story.id]?.mine}
+                      names={auraByStory[story.id]?.names}
                       onClick={isOwn ? undefined : () => toggleAura(story.id)}
                     />
                     <CommentPill count={commentsByStory[story.id]?.length ?? 0} onClick={() => toggleComments(story.id)} />

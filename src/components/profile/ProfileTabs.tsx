@@ -67,7 +67,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const { profile: viewer } = useAuth()
   const [tab, setTab] = useState<Tab>('verhalen')
   const [stories, setStories] = useState<Story[] | null>(null)
-  const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean }>>({})
+  const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean; names: string[] }>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
@@ -116,11 +116,24 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
         'story_id',
         rows.map((s) => s.id),
       )
-    const map: Record<string, { count: number; mine: boolean }> = {}
-    for (const row of (auraRows ?? []) as { story_id: string; user_id: string }[]) {
-      const entry = map[row.story_id] ?? { count: 0, mine: false }
+    const giverRows = (auraRows ?? []) as { story_id: string; user_id: string }[]
+    const { data: giverProfiles } = giverRows.length
+      ? await supabase
+          .from('profile_cards')
+          .select('id, display_name')
+          .in(
+            'id',
+            [...new Set(giverRows.map((r) => r.user_id))],
+          )
+      : { data: [] }
+    const nameById = new Map((giverProfiles ?? []).map((p) => [p.id, p.display_name ?? 'Iemand']))
+
+    const map: Record<string, { count: number; mine: boolean; names: string[] }> = {}
+    for (const row of giverRows) {
+      const entry = map[row.story_id] ?? { count: 0, mine: false, names: [] }
       entry.count += 1
       if (row.user_id === viewer?.id) entry.mine = true
+      entry.names.push(nameById.get(row.user_id) ?? 'Iemand')
       map[row.story_id] = entry
     }
     setAuraByStory(map)
@@ -128,12 +141,18 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
 
   async function toggleAura(storyId: string) {
     if (!viewer) return
-    const current = auraByStory[storyId] ?? { count: 0, mine: false }
+    const current = auraByStory[storyId] ?? { count: 0, mine: false, names: [] }
     if (current.mine) {
-      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count - 1, mine: false } }))
+      setAuraByStory((prev) => ({
+        ...prev,
+        [storyId]: { count: current.count - 1, mine: false, names: current.names.filter((n) => n !== viewer.display_name) },
+      }))
       await supabase.from('story_aura').delete().eq('story_id', storyId).eq('user_id', viewer.id)
     } else {
-      setAuraByStory((prev) => ({ ...prev, [storyId]: { count: current.count + 1, mine: true } }))
+      setAuraByStory((prev) => ({
+        ...prev,
+        [storyId]: { count: current.count + 1, mine: true, names: [...current.names, viewer.display_name] },
+      }))
       await supabase.from('story_aura').insert({ story_id: storyId, user_id: viewer.id })
     }
   }
@@ -355,6 +374,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
               <AuraPill
                 count={auraByStory[story.id]?.count ?? 0}
                 active={auraByStory[story.id]?.mine}
+                names={auraByStory[story.id]?.names}
                 onClick={isOwn ? undefined : () => toggleAura(story.id)}
               />
             </div>
@@ -524,7 +544,6 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
 export function AvatarHeader({
   displayName,
   username,
-  meta,
   avatarPath,
   statusMessage,
   onPhotoChange,
@@ -532,7 +551,6 @@ export function AvatarHeader({
 }: {
   displayName: string
   username: string
-  meta?: string
   avatarPath?: string | null
   /** Kort zelfgekozen zinnetje, getoond naast de naam in een ander lettertype. */
   statusMessage?: string | null
@@ -566,10 +584,7 @@ export function AvatarHeader({
           <h1 className="text-2xl font-extrabold text-ink-900">{displayName}</h1>
           {statusMessage && <span className="font-hand text-xl text-ink-400">{statusMessage}</span>}
         </div>
-        <p className="text-sm font-semibold text-ink-400">
-          @{username}
-          {meta ? ` · ${meta}` : ''}
-        </p>
+        <p className="text-sm font-semibold text-ink-400">@{username}</p>
       </div>
     </div>
   )

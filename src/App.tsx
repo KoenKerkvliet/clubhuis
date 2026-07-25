@@ -31,6 +31,22 @@ function LoadingScreen() {
   )
 }
 
+// Zonder minimum kan de splash bijna niet zichtbaar zijn (bv. bij een warme sessie) en
+// voelt de app-start abrupt aan; 1500ms is dubbel zo lang als de eerdere, ongeveer 750ms
+// aanvoelende duur.
+const MIN_SPLASH_MS = 1500
+
+function useMinDuration(ms: number) {
+  const [elapsed, setElapsed] = useState(false)
+
+  useEffect(() => {
+    const id = setTimeout(() => setElapsed(true), ms)
+    return () => clearTimeout(id)
+  }, [ms])
+
+  return elapsed
+}
+
 function useIsOpen(role: string | undefined) {
   const [open, setOpen] = useState(() => isClubhuisOpen(role))
 
@@ -46,12 +62,13 @@ function useIsOpen(role: string | undefined) {
 export function App() {
   const { session, profile, loading, recoveryMode } = useAuth()
   const open = useIsOpen(profile?.role)
+  const minSplashElapsed = useMinDuration(MIN_SPLASH_MS)
 
   useEffect(() => {
     applyThemeColor(profile?.theme_color)
   }, [profile?.theme_color])
 
-  if (loading) return <LoadingScreen />
+  if (loading || !minSplashElapsed) return <LoadingScreen />
 
   // Binnengekomen via een herstel-link: eerst een nieuw wachtwoord kiezen, verder niets.
   if (recoveryMode) return <ResetPassword />

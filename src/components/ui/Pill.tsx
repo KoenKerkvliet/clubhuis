@@ -8,9 +8,11 @@ interface AuraPillProps {
   /** Zonder onClick blijft de pill decoratief (bv. op je eigen bericht). */
   onClick?: () => void
   className?: string
+  /** Namen van wie aura gaf; als die er zijn, verschijnen ze in een tooltip bij hover. */
+  names?: string[]
 }
 
-export function AuraPill({ count, active = false, onClick, className = '' }: AuraPillProps) {
+export function AuraPill({ count, active = false, onClick, className = '', names }: AuraPillProps) {
   const classes = `inline-flex items-center gap-1.5 rounded-pill px-3.5 py-1.5 text-sm font-extrabold transition-colors ${
     active ? 'bg-aura text-paper' : 'bg-aura-soft text-aura-text'
   } ${onClick ? 'active:scale-95' : ''} ${className}`
@@ -21,12 +23,24 @@ export function AuraPill({ count, active = false, onClick, className = '' }: Aur
     </>
   )
 
-  if (!onClick) return <span className={classes}>{content}</span>
-
-  return (
+  const pill = !onClick ? (
+    <span className={classes}>{content}</span>
+  ) : (
     <button type="button" onClick={onClick} className={classes}>
       {content}
     </button>
+  )
+
+  if (!names || names.length === 0) return pill
+
+  return (
+    <span className="group relative inline-block">
+      {pill}
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-48 -translate-x-1/2 rounded-xl bg-ink-900 px-3 py-1.5 text-center text-xs font-bold text-paper opacity-0 shadow-soft transition-opacity group-hover:opacity-100">
+        {names.join(', ')}
+        <span className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 border-4 border-transparent border-t-ink-900" />
+      </span>
+    </span>
   )
 }
 
