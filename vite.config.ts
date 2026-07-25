@@ -4,9 +4,9 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-export default defineConfig(({ command }) => {
-  // GitHub Pages serveert dit als project page onder /clubhuis/; lokaal blijft het root.
-  const base = command === 'build' ? '/clubhuis/' : '/'
+export default defineConfig(() => {
+  // Draait op het eigen domein (clubhuis.eu) vanaf de hoofdmap, dus geen sub-path meer nodig.
+  const base = '/'
 
   return {
     base,

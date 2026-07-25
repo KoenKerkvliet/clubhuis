@@ -8,6 +8,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const ALLOWED_REDIRECTS = [
+  'https://clubhuis.eu/',
   'https://koenkerkvliet.github.io/clubhuis/',
   'http://localhost:5173/',
 ]
