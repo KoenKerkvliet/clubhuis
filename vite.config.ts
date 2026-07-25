@@ -30,11 +30,11 @@ export default defineConfig(() => {
           description: 'Een veilig herinneringenboek, geen feed.',
           theme_color: '#3F739F',
           background_color: '#F7F4EF',
-          // 'standalone' (geen adresbalk) laat Android een beperktere native bestandenkiezer
-          // gebruiken voor <input type="file"> die vaak geen Galerij-app toont (alleen Camera
-          // en Bestanden) — 'minimal-ui' houdt een dun navigatiebalkje en krijgt daardoor de
-          // gewone volledige kiezer terug.
-          display: 'minimal-ui',
+          // 'minimal-ui' gaf op Android de volledige fotokiezer (met Galerij) terug, maar
+          // toont een navigatiebalkje dat niet gewenst is — terug naar volledig schermvullend.
+          // Op Samsung-apparaten kan een bestaande foto nog altijd via "Bestanden" > Camera
+          // gekozen worden; alleen de Galerij-snelkoppeling in de kiezer ontbreekt daar.
+          display: 'standalone',
           orientation: 'portrait',
           scope: base,
           start_url: base,
