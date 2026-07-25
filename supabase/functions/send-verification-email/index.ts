@@ -133,6 +133,95 @@ Clubhuis
 (c) ${new Date().getFullYear()} Clubhuis | clubhuis.eu`
 }
 
+const ADMIN_ACCOUNTS_URL = 'https://clubhuis.eu/admin/accounts'
+
+function newSignupEmailHtml(name: string, username: string, email: string) {
+  return `<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Nieuwe aanmelding bij Clubhuis</title>
+</head>
+<body style="margin:0;padding:0;background:#F7F4EF;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<div style="display:none;max-height:0;overflow:hidden;font-size:1px;line-height:1px;color:#F7F4EF;opacity:0;">
+  Er heeft zich zojuist iemand nieuw aangemeld — beoordeel het account.
+</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="#F7F4EF" style="background:#F7F4EF;">
+<tr><td align="center" style="padding:32px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#FFFFFF;border-radius:16px;overflow:hidden;">
+  <tr>
+    <td bgcolor="#3F739F" style="background:#3F739F;padding:28px 32px;">
+      <span style="font-size:20px;font-weight:800;color:#FFFFFF;">Clubhuis</span>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:32px;color:#231F38;font-size:16px;line-height:1.6;">
+      <p style="margin:0 0 16px;">Hoi,</p>
+      <p style="margin:0 0 24px;">
+        Er heeft zich zojuist iemand nieuw aangemeld bij Clubhuis. Zodra het e-mailadres
+        bevestigd is, staat het account klaar om te beoordelen.
+      </p>
+      <p style="margin:0 0 24px;padding:16px;background:#F7F4EF;border-radius:12px;color:#6A6378;font-size:14px;">
+        ${name} (@${username})<br>${email}
+      </p>
+      <table role="presentation" cellpadding="0" cellspacing="0">
+        <tr>
+          <td bgcolor="#3F739F" style="border-radius:999px;">
+            <a href="${ADMIN_ACCOUNTS_URL}" style="display:inline-block;padding:14px 28px;font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;">Bekijk in Accounts</a>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:16px 32px;background:#F7F4EF;color:#6A6378;font-size:12px;text-align:center;">
+      (c) ${new Date().getFullYear()} Clubhuis
+    </td>
+  </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>`
+}
+
+function newSignupEmailText(name: string, username: string, email: string) {
+  return `Hoi,
+
+Er heeft zich zojuist iemand nieuw aangemeld bij Clubhuis. Zodra het e-mailadres bevestigd is, staat het account klaar om te beoordelen.
+
+${name} (@${username})
+${email}
+
+${ADMIN_ACCOUNTS_URL}
+
+Met vriendelijke groet,
+Clubhuis
+
+--
+(c) ${new Date().getFullYear()} Clubhuis | clubhuis.eu`
+}
+
+async function notifyAdminsOfNewSignup(admin: ReturnType<typeof createClient>, name: string, username: string, email: string) {
+  const { data: admins } = await admin.from('profiles').select('id').eq('role', 'beheerder').eq('status', 'active')
+  for (const a of (admins ?? []) as { id: string }[]) {
+    const { data: target } = await admin.auth.admin.getUserById(a.id)
+    if (target?.user?.email) {
+      await sendEmail({
+        to: target.user.email,
+        subject: 'Nieuwe aanmelding bij Clubhuis',
+        html: newSignupEmailHtml(name, username, email),
+        text: newSignupEmailText(name, username, email),
+      })
+    }
+  }
+}
+
 interface RequestBody {
   email?: string
   password?: string
@@ -190,6 +279,16 @@ Deno.serve(async (req: Request) => {
   } catch (err) {
     console.error('emailit send failed', err)
     return json({ error: 'De bevestigingsmail kon niet worden verstuurd. Probeer het nog eens.' }, 500)
+  }
+
+  // Alleen bij een echte nieuwe registratie (username wordt alleen door signUp meegestuurd,
+  // niet door "stuur opnieuw") een beheerder waarschuwen — dat vraagt namelijk beoordeling.
+  if (body.username) {
+    try {
+      await notifyAdminsOfNewSignup(admin, name, body.username, email)
+    } catch (err) {
+      console.error('admin notify failed', err)
+    }
   }
 
   return json({ success: true })
