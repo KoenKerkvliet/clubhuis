@@ -162,7 +162,11 @@ Deno.serve(async (req: Request) => {
     options: { redirectTo: body.redirectTo },
   })
 
-  if (!error && data?.properties?.action_link) {
+  if (error || !data?.properties?.action_link) {
+    // Bewust geen foutmelding teruggeven aan de client (zie boven), maar wel loggen
+    // zodat dit soort mislukkingen niet stil blijven liggen.
+    console.error('generateLink(recovery) failed', email, error?.message, error?.status)
+  } else {
     try {
       await sendEmail({
         to: email,
@@ -171,8 +175,7 @@ Deno.serve(async (req: Request) => {
         text: resetEmailText(data.properties.action_link),
       })
     } catch (err) {
-      console.error('emailit send failed', err)
-      // Bewust geen foutmelding teruggeven: zie boven.
+      console.error('emailit send failed', email, err)
     }
   }
 
