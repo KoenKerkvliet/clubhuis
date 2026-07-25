@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/Card'
 import { Avatar } from '@/components/ui/Avatar'
 import { Button } from '@/components/ui/Button'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
-import { AuraPill, PrivatePill } from '@/components/ui/Pill'
+import { AuraPill, CommentPill, PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ContactsPanel } from '@/components/friends/ContactsPanel'
 import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/icons'
@@ -46,6 +46,15 @@ interface Scribble {
   author: { display_name: string } | null
 }
 
+interface Comment {
+  id: string
+  author_id: string
+  story_id: string
+  text: string
+  created_at: string
+  profiles: { display_name: string } | null
+}
+
 const SCRIBBLE_STYLES = ['bg-scribble-peach text-scribble-peach-text', 'bg-scribble-blue text-scribble-blue-text']
 const QUESTION_STYLES = [
   'bg-avatar-blue-bg text-avatar-blue-text',
@@ -68,6 +77,9 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const [tab, setTab] = useState<Tab>('verhalen')
   const [stories, setStories] = useState<Story[] | null>(null)
   const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean; names: string[] }>>({})
+  const [commentsByStory, setCommentsByStory] = useState<Record<string, Comment[]>>({})
+  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set())
+  const [commentDrafts, setCommentDrafts] = useState<Record<string, string>>({})
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
@@ -107,15 +119,18 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
 
     if (!rows.length) {
       setAuraByStory({})
+      setCommentsByStory({})
       return
     }
-    const { data: auraRows } = await supabase
-      .from('story_aura')
-      .select('story_id, user_id')
-      .in(
-        'story_id',
-        rows.map((s) => s.id),
-      )
+    const ids = rows.map((s) => s.id)
+    const [{ data: auraRows }, { data: commentRows }] = await Promise.all([
+      supabase.from('story_aura').select('story_id, user_id').in('story_id', ids),
+      supabase
+        .from('story_comments')
+        .select('id, author_id, story_id, text, created_at, profiles!story_comments_author_id_fkey(display_name)')
+        .in('story_id', ids)
+        .order('created_at', { ascending: true }),
+    ])
     const giverRows = (auraRows ?? []) as { story_id: string; user_id: string }[]
     const { data: giverProfiles } = giverRows.length
       ? await supabase
@@ -137,6 +152,39 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
       map[row.story_id] = entry
     }
     setAuraByStory(map)
+
+    const commentMap: Record<string, Comment[]> = {}
+    for (const row of (commentRows ?? []) as unknown as Comment[]) {
+      ;(commentMap[row.story_id] ??= []).push(row)
+    }
+    setCommentsByStory(commentMap)
+  }
+
+  async function refreshComments(storyId: string) {
+    const { data } = await supabase
+      .from('story_comments')
+      .select('id, author_id, story_id, text, created_at, profiles!story_comments_author_id_fkey(display_name)')
+      .eq('story_id', storyId)
+      .order('created_at', { ascending: true })
+    setCommentsByStory((prev) => ({ ...prev, [storyId]: (data as unknown as Comment[]) ?? [] }))
+  }
+
+  async function sendComment(storyId: string) {
+    if (!viewer) return
+    const text = (commentDrafts[storyId] ?? '').trim()
+    if (!text) return
+    setCommentDrafts((prev) => ({ ...prev, [storyId]: '' }))
+    await supabase.from('story_comments').insert({ story_id: storyId, author_id: viewer.id, text })
+    refreshComments(storyId)
+  }
+
+  function toggleComments(storyId: string) {
+    setExpandedComments((prev) => {
+      const next = new Set(prev)
+      if (next.has(storyId)) next.delete(storyId)
+      else next.add(storyId)
+      return next
+    })
   }
 
   async function toggleAura(storyId: string) {
@@ -377,6 +425,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
                 names={auraByStory[story.id]?.names}
                 onClick={isOwn ? undefined : () => toggleAura(story.id)}
               />
+              <CommentPill count={commentsByStory[story.id]?.length ?? 0} onClick={() => toggleComments(story.id)} />
             </div>
           </>
         )}
@@ -390,6 +439,33 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
             <button type="button" onClick={() => setConfirmingDeleteId(null)} className="font-extrabold">
               Nee
             </button>
+          </div>
+        )}
+
+        {expandedComments.has(story.id) && editingId !== story.id && (
+          <div className="mt-4 flex flex-col gap-3 border-t border-blue-100/70 pt-4">
+            {(commentsByStory[story.id] ?? []).map((c) => (
+              <p key={c.id} className="text-sm text-ink-700">
+                <span className="font-extrabold text-ink-900">{c.profiles?.display_name ?? 'Iemand'}</span> {c.text}
+              </p>
+            ))}
+            <div className="flex items-center gap-2">
+              <input
+                className="w-full rounded-full bg-cream px-4 py-2 text-ink-700 outline-none placeholder:text-ink-400/60"
+                placeholder="Schrijf een reactie..."
+                value={commentDrafts[story.id] ?? ''}
+                onChange={(e) => setCommentDrafts((prev) => ({ ...prev, [story.id]: e.target.value }))}
+                onKeyDown={(e) => e.key === 'Enter' && sendComment(story.id)}
+              />
+              <button
+                type="button"
+                onClick={() => sendComment(story.id)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500 text-paper"
+                aria-label="Verstuur reactie"
+              >
+                <ArrowRightIcon width={16} height={16} />
+              </button>
+            </div>
           </div>
         )}
       </Card>
