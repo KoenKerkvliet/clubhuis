@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { BigTitle } from '@/components/layout/PageHeader'
 import { AuraPill, CommentPill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
+import { Poll } from '@/components/story/Poll'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { ArrowRightIcon, MoreIcon } from '@/components/ui/icons'
 
@@ -21,6 +22,7 @@ interface FeedStory {
   created_at: string
   author_id: string
   is_favorite: boolean
+  kind: string
   profiles: { username: string; display_name: string; avatar_url: string | null } | null
 }
 
@@ -104,7 +106,7 @@ export function Feed() {
     const { data, count } = await supabase
       .from('stories')
       .select(
-        'id, text, photo_path, visibility, created_at, author_id, is_favorite, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
+        'id, text, photo_path, visibility, created_at, author_id, is_favorite, kind, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
         { count: 'exact' },
       )
       .eq('visibility', 'friends')
@@ -497,6 +499,7 @@ export function Feed() {
                 <>
                   <p className="mt-3 text-ink-700">{story.text}</p>
                   {story.photo_path && <StoryPhoto path={story.photo_path} />}
+                  {story.kind === 'poll' && <Poll storyId={story.id} />}
                   <div className="mt-4 flex items-center gap-2">
                     <AuraPill
                       count={auraByStory[story.id]?.count ?? 0}

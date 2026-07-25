@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { AuraPill, CommentPill, PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
+import { Poll } from '@/components/story/Poll'
 import { ContactsPanel } from '@/components/friends/ContactsPanel'
 import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/icons'
 import { LoadingState } from '@/components/ui/LoadingState'
@@ -24,6 +25,7 @@ interface Story {
   visibility: string
   created_at: string
   is_favorite: boolean
+  kind: string
 }
 
 interface Question {
@@ -114,7 +116,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setStories(null)
     const { data } = await supabase
       .from('stories')
-      .select('id, text, photo_path, visibility, created_at, is_favorite')
+      .select('id, text, photo_path, visibility, created_at, is_favorite, kind')
       .eq('author_id', profileId)
       .order('created_at', { ascending: false })
     const rows = data ?? []
@@ -464,6 +466,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
           <>
             <p className="mt-3 text-ink-700">{story.text}</p>
             {story.photo_path && <StoryPhoto path={story.photo_path} />}
+            {story.kind === 'poll' && <Poll storyId={story.id} />}
             <div className="mt-4 flex items-center gap-2">
               <AuraPill
                 count={auraByStory[story.id]?.count ?? 0}

@@ -6,8 +6,15 @@ import { supabase } from '@/lib/supabase'
 import { resizeImageToWebp } from '@/lib/image'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
+import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { TitleHeader } from '@/components/layout/PageHeader'
 import { CameraIcon, CheckIcon, FriendsIcon, LockIcon, XIcon } from '@/components/ui/icons'
+
+const MAX_POLL_OPTIONS = 6
+const POST_KINDS = [
+  { value: 'text' as const, label: 'Verhaal' },
+  { value: 'poll' as const, label: 'Poll' },
+]
 
 const TAGLINES = [
   'Dat wordt later leuk om terug te lezen.',
@@ -32,7 +39,9 @@ export function Tell() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const fileInput = useRef<HTMLInputElement>(null)
+  const [postKind, setPostKind] = useState<'text' | 'poll'>('text')
   const [text, setText] = useState('')
+  const [pollOptions, setPollOptions] = useState(['', ''])
   const [visibility, setVisibility] = useState<'private' | 'friends'>('friends')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
@@ -67,11 +76,18 @@ export function Tell() {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!profile || !text.trim()) return
+
+    const trimmedOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
+    if (postKind === 'poll' && trimmedOptions.length < 2) {
+      setError('Geef minstens twee antwoordmogelijkheden op.')
+      return
+    }
+
     setSubmitting(true)
     setError(null)
 
     let photoPath: string | null = null
-    if (photo) {
+    if (postKind === 'text' && photo) {
       const ext = photo.name.split('.').pop() ?? 'jpg'
       photoPath = `${profile.id}/${crypto.randomUUID()}.${ext}`
       const { error: uploadError } = await supabase.storage.from('story-photos').upload(photoPath, photo)
@@ -82,42 +98,105 @@ export function Tell() {
       }
     }
 
-    const { error: insertError } = await supabase.from('stories').insert({
-      author_id: profile.id,
-      text: text.trim(),
-      photo_path: photoPath,
-      visibility,
-    })
+    const { data: inserted, error: insertError } = await supabase
+      .from('stories')
+      .insert({
+        author_id: profile.id,
+        text: text.trim(),
+        photo_path: photoPath,
+        visibility,
+        kind: postKind,
+      })
+      .select('id')
+      .single()
 
-    setSubmitting(false)
-
-    if (insertError) {
+    if (insertError || !inserted) {
+      setSubmitting(false)
       setError('Opslaan lukte niet. Probeer het nog eens.')
       return
     }
 
+    if (postKind === 'poll') {
+      const { error: optionsError } = await supabase.from('poll_options').insert(
+        trimmedOptions.map((label, i) => ({ story_id: inserted.id, label, sort_order: i })),
+      )
+      if (optionsError) {
+        setSubmitting(false)
+        setError('De antwoordmogelijkheden konden niet worden opgeslagen. Probeer het nog eens.')
+        return
+      }
+    }
+
+    setSubmitting(false)
     setConfirmation({ headline: pick(HEADLINES, null), tagline: pick(TAGLINES, null) })
     setText('')
     setPhoto(null)
+    setPollOptions(['', ''])
+    setPostKind('text')
     if (fileInput.current) fileInput.current.value = ''
   }
 
   return (
     <div className="flex flex-col gap-5">
-      <TitleHeader title="Jouw verhaal" />
+      <TitleHeader title={postKind === 'poll' ? 'Nieuwe poll' : 'Jouw verhaal'} />
+
+      <SegmentedTabs
+        value={postKind}
+        onChange={(value) => {
+          setPostKind(value)
+          setError(null)
+        }}
+        options={POST_KINDS}
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Card>
           <textarea
             className="w-full resize-none border-none bg-transparent text-lg text-ink-700 outline-none placeholder:text-ink-400/50"
-            rows={5}
+            rows={postKind === 'poll' ? 2 : 5}
             maxLength={2000}
-            placeholder="Wat maakte vandaag bijzonder?"
+            placeholder={postKind === 'poll' ? 'Stel je vraag...' : 'Wat maakte vandaag bijzonder?'}
             value={text}
             onChange={(e) => setText(e.target.value)}
             required
           />
-          {photoPreview ? (
+
+          {postKind === 'poll' ? (
+            <div className="mt-3 flex flex-col gap-2">
+              {pollOptions.map((option, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    className="w-full rounded-full bg-cream px-4 py-2.5 text-ink-700 outline-none placeholder:text-ink-400/60"
+                    placeholder={`Optie ${i + 1}`}
+                    maxLength={100}
+                    value={option}
+                    onChange={(e) =>
+                      setPollOptions((prev) => prev.map((o, idx) => (idx === i ? e.target.value : o)))
+                    }
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="flex h-9 w-9 shrink-0 items-center justify-center text-ink-400"
+                      aria-label="Optie verwijderen"
+                    >
+                      <XIcon width={16} height={16} />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < MAX_POLL_OPTIONS && (
+                <button
+                  type="button"
+                  onClick={() => setPollOptions((prev) => [...prev, ''])}
+                  className="self-start text-sm font-extrabold text-blue-500"
+                >
+                  + Optie toevoegen
+                </button>
+              )}
+            </div>
+          ) : photoPreview ? (
             <div className="relative mt-3">
               <img src={photoPreview} alt="" className="max-h-[320px] w-full rounded-2xl object-cover" />
               <button
@@ -194,8 +273,17 @@ export function Tell() {
 
         {error && <p className="text-sm font-semibold text-warn-text">{error}</p>}
 
-        <Button type="submit" disabled={submitting || processingPhoto || !text.trim()} className="w-full">
-          {submitting ? 'Bezig met opslaan...' : 'Bewaar dit verhaal'}
+        <Button
+          type="submit"
+          disabled={
+            submitting ||
+            processingPhoto ||
+            !text.trim() ||
+            (postKind === 'poll' && pollOptions.filter((o) => o.trim()).length < 2)
+          }
+          className="w-full"
+        >
+          {submitting ? 'Bezig met opslaan...' : postKind === 'poll' ? 'Plaats poll' : 'Bewaar dit verhaal'}
         </Button>
       </form>
 
