@@ -47,6 +47,12 @@ interface Scribble {
 }
 
 const SCRIBBLE_STYLES = ['bg-scribble-peach text-scribble-peach-text', 'bg-scribble-blue text-scribble-blue-text']
+const QUESTION_STYLES = [
+  'bg-avatar-blue-bg text-avatar-blue-text',
+  'bg-avatar-green-bg text-avatar-green-text',
+  'bg-avatar-peach-bg text-avatar-peach-text',
+  'bg-avatar-sand-bg text-avatar-sand-text',
+]
 
 function timeAgo(iso: string) {
   const diff = Date.now() - new Date(iso).getTime()
@@ -153,10 +159,33 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setScribbles(null)
     const { data } = await supabase
       .from('scribbles')
-      .select('id, author_id, profile_id, text, created_at, parent_id, author:profiles!scribbles_author_id_fkey(display_name)')
+      .select('id, author_id, profile_id, text, created_at, parent_id')
       .eq('profile_id', profileId)
       .order('created_at', { ascending: true })
-    setScribbles((data as unknown as Scribble[]) ?? [])
+    const rows = data ?? []
+
+    if (!rows.length) {
+      setScribbles([])
+      return
+    }
+
+    // Een krabbel-auteur is een vriend van de plekjeseigenaar, maar niet per se van de
+    // kijker (bv. bij het bekijken van een vriend's plekje) — profiles zelf (RLS: eigen
+    // rij of vrienden) zou die naam dan verbergen, profile_cards toont elk actief profiel.
+    const { data: authorProfiles } = await supabase
+      .from('profile_cards')
+      .select('id, display_name')
+      .in(
+        'id',
+        [...new Set(rows.map((r) => r.author_id))],
+      )
+    const byId = new Map((authorProfiles ?? []).map((p) => [p.id, p.display_name]))
+    setScribbles(
+      rows.map((r) => ({
+        ...r,
+        author: byId.has(r.author_id) ? { display_name: byId.get(r.author_id) ?? 'Iemand' } : null,
+      })),
+    )
   }
 
   async function saveAnswer(questionId: string, value: string) {
@@ -369,23 +398,23 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
       )}
 
       {tab === 'overmij' && (
-        <div className="flex flex-col gap-3">
-          {questions.map((q) => {
+        <div className="grid grid-cols-2 gap-3">
+          {questions.map((q, i) => {
             const answer = answers.find((a) => a.question_id === q.id)?.answer ?? ''
             return (
-              <Card key={q.id}>
-                <p className="text-xs font-extrabold uppercase tracking-wide text-ink-400">{q.label}</p>
+              <div key={q.id} className={`rounded-card p-4 ${QUESTION_STYLES[i % QUESTION_STYLES.length]}`}>
+                <p className="text-xs font-extrabold uppercase tracking-wide opacity-70">{q.label}</p>
                 {isOwn ? (
                   <input
-                    className="mt-2 w-full bg-transparent text-ink-700 outline-none placeholder:text-ink-400/50"
+                    className="font-hand mt-1 w-full bg-transparent text-xl leading-snug outline-none placeholder:font-sans placeholder:text-sm placeholder:font-semibold placeholder:opacity-60"
                     placeholder="Nog niet ingevuld"
                     defaultValue={answer}
                     onBlur={(e) => saveAnswer(q.id, e.target.value)}
                   />
                 ) : (
-                  <p className="mt-2 text-ink-700">{answer || '—'}</p>
+                  <p className="font-hand mt-1 text-xl leading-snug">{answer || '—'}</p>
                 )}
-              </Card>
+              </div>
             )
           })}
         </div>

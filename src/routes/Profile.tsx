@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { Field } from '@/components/ui/Field'
 import { TitleHeader } from '@/components/layout/PageHeader'
+import { THEME_COLORS, THEME_COLOR_KEYS, applyThemeColor } from '@/lib/themeColors'
+import { CheckIcon } from '@/components/ui/icons'
 
 export function Profile() {
   const { profile, refreshProfile, completePasswordReset } = useAuth()
@@ -16,6 +18,8 @@ export function Profile() {
   const [statusMessage, setStatusMessage] = useState(profile?.status_message ?? '')
   const [savingStatus, setSavingStatus] = useState(false)
   const [statusSaved, setStatusSaved] = useState(false)
+
+  const [themeColor, setThemeColor] = useState(profile?.theme_color ?? 'blauw')
 
   const [newPassword, setNewPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
@@ -48,6 +52,20 @@ export function Profile() {
     await refreshProfile()
     setSavingStatus(false)
     setStatusSaved(true)
+  }
+
+  async function chooseThemeColor(key: string) {
+    if (!profile || key === themeColor) return
+    const previous = themeColor
+    setThemeColor(key)
+    applyThemeColor(key)
+    const { error } = await supabase.from('profiles').update({ theme_color: key }).eq('id', profile.id)
+    if (error) {
+      setThemeColor(previous)
+      applyThemeColor(previous)
+      return
+    }
+    await refreshProfile()
   }
 
   async function savePassword() {
@@ -124,6 +142,34 @@ export function Profile() {
             </Button>
             {statusSaved && <p className="text-sm font-bold text-avatar-green-text">Opgeslagen!</p>}
           </div>
+        </div>
+      </Card>
+
+      <Card>
+        <p className="font-extrabold text-ink-900">Kleurprofiel</p>
+        <p className="mt-1 text-sm text-ink-400">Kies je eigen kleur voor knoppen en accenten in de app.</p>
+        <div className="mt-3 flex flex-wrap gap-4">
+          {THEME_COLOR_KEYS.map((key) => {
+            const palette = THEME_COLORS[key]
+            const active = themeColor === key
+            return (
+              <div key={key} className="flex flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => chooseThemeColor(key)}
+                  aria-label={palette.label}
+                  className="flex h-12 w-12 items-center justify-center rounded-full transition-transform active:scale-95"
+                  style={{
+                    backgroundColor: palette[500],
+                    boxShadow: active ? `0 0 0 3px var(--color-paper), 0 0 0 6px ${palette[500]}` : undefined,
+                  }}
+                >
+                  {active && <CheckIcon width={18} height={18} strokeWidth={3} className="text-paper" />}
+                </button>
+                <span className="text-xs font-bold text-ink-400">{palette.label}</span>
+              </div>
+            )
+          })}
         </div>
       </Card>
 

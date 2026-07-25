@@ -235,14 +235,39 @@ export function Feed() {
   async function loadIncoming() {
     const { data } = await supabase
       .from('friendships')
-      .select('id, requester_id, profiles!friendships_requester_id_fkey(username, display_name, avatar_url)')
+      .select('id, requester_id')
       .eq('status', 'pending')
       .eq('addressee_id', profile?.id ?? '')
-    setIncoming((data as unknown as IncomingRequest[]) ?? [])
+    const rows = data ?? []
+    if (!rows.length) {
+      setIncoming([])
+      return
+    }
+
+    // De aanvrager is per definitie nog geen vriend, dus profiles zelf (RLS: eigen rij of
+    // vrienden) toont hier niets — profile_cards is wel zichtbaar voor elk actief profiel.
+    const { data: requesterProfiles } = await supabase
+      .from('profile_cards')
+      .select('id, username, display_name, avatar_url')
+      .in(
+        'id',
+        rows.map((r) => r.requester_id),
+      )
+    const byId = new Map((requesterProfiles ?? []).map((p) => [p.id, p]))
+    setIncoming(
+      rows.map((r) => ({
+        id: r.id,
+        requester_id: r.requester_id,
+        profiles: (byId.get(r.requester_id) ?? null) as IncomingRequest['profiles'],
+      })),
+    )
   }
 
   async function respond(requestId: string, status: 'accepted' | 'declined') {
     await supabase.from('friendships').update({ status }).eq('id', requestId)
+    // Anders blijft de bijbehorende melding op de Meldingen-pagina staan met
+    // Accepteren/Weigeren, ook al is dit verzoek hier al afgehandeld.
+    await supabase.from('notifications').delete().eq('type', 'friend_request').eq('payload->>friendship_id', requestId)
     setIncoming((prev) => prev.filter((r) => r.id !== requestId))
   }
 

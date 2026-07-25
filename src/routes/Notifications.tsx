@@ -78,6 +78,9 @@ export function Notifications() {
 
   async function respond(friendshipId: string, status: 'accepted' | 'declined', notificationId: string) {
     await supabase.from('friendships').update({ status }).eq('id', friendshipId)
+    // Anders blijft deze melding met Accepteren/Weigeren staan nadat het verzoek al is
+    // afgehandeld — ook als dat via de Vrienden-feed gebeurde in plaats van hier.
+    await supabase.from('notifications').delete().eq('id', notificationId)
     setItems((prev) => prev?.filter((n) => n.id !== notificationId) ?? null)
   }
 

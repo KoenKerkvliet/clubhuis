@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { isClubhuisOpen } from '@/lib/openingHours'
+import { applyThemeColor } from '@/lib/themeColors'
 import { AppShell } from '@/components/layout/AppShell'
 import { AdminShell } from '@/components/layout/AdminShell'
 import { Login } from '@/routes/auth/Login'
@@ -45,6 +46,10 @@ function useIsOpen(role: string | undefined) {
 export function App() {
   const { session, profile, loading, recoveryMode } = useAuth()
   const open = useIsOpen(profile?.role)
+
+  useEffect(() => {
+    applyThemeColor(profile?.theme_color)
+  }, [profile?.theme_color])
 
   if (loading) return <LoadingScreen />
 
