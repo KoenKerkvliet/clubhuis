@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { resizeImageToWebp } from '@/lib/image'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { TitleHeader } from '@/components/layout/PageHeader'
@@ -35,6 +36,7 @@ export function Tell() {
   const [visibility, setVisibility] = useState<'private' | 'friends'>('friends')
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
+  const [processingPhoto, setProcessingPhoto] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<{ headline: string; tagline: string } | null>(null)
@@ -48,6 +50,19 @@ export function Tell() {
     setPhotoPreview(url)
     return () => URL.revokeObjectURL(url)
   }, [photo])
+
+  async function handlePhotoSelect(file: File | undefined) {
+    if (!file) return
+    setError(null)
+    setProcessingPhoto(true)
+    try {
+      setPhoto(await resizeImageToWebp(file))
+    } catch {
+      setError('Deze foto kon niet worden verwerkt. Probeer een andere foto.')
+    } finally {
+      setProcessingPhoto(false)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -120,13 +135,14 @@ export function Tell() {
           ) : (
             <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm font-extrabold text-blue-500">
               <CameraIcon width={20} height={20} />
-              Voeg een foto toe
+              {processingPhoto ? 'Foto verwerken...' : 'Voeg een foto toe'}
               <input
                 ref={fileInput}
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+                disabled={processingPhoto}
+                onChange={(e) => handlePhotoSelect(e.target.files?.[0])}
               />
             </label>
           )}
@@ -178,7 +194,7 @@ export function Tell() {
 
         {error && <p className="text-sm font-semibold text-warn-text">{error}</p>}
 
-        <Button type="submit" disabled={submitting || !text.trim()} className="w-full">
+        <Button type="submit" disabled={submitting || processingPhoto || !text.trim()} className="w-full">
           {submitting ? 'Bezig met opslaan...' : 'Bewaar dit verhaal'}
         </Button>
       </form>
