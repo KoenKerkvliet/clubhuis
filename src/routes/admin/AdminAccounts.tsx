@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Avatar } from '@/components/ui/Avatar'
 import { Pill } from '@/components/ui/Pill'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { CheckIcon, SearchIcon } from '@/components/ui/icons'
 
 type ProfileRow = {
@@ -159,7 +160,7 @@ export function AdminAccounts() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {rows === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+        {rows === null && <LoadingState />}
         {visible?.length === 0 && <Card className="text-center text-ink-400">Niemand in deze lijst.</Card>}
 
         {visible?.map((row) => (

@@ -5,6 +5,7 @@ import { TitleHeader } from '@/components/layout/PageHeader'
 import { AvatarHeader, ProfileTabs } from '@/components/profile/ProfileTabs'
 import { Pill } from '@/components/ui/Pill'
 import { CheckIcon } from '@/components/ui/icons'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 interface Profile {
   id: string
@@ -28,7 +29,7 @@ export function FriendProfile() {
       .then(({ data }) => setProfile(data as Profile | null))
   }, [username])
 
-  if (profile === undefined) return <p className="text-sm text-ink-400">Even ophalen...</p>
+  if (profile === undefined) return <LoadingState />
   if (profile === null) return <p className="text-sm text-ink-400">Dit plekje bestaat niet (meer).</p>
 
   return (

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Field } from '@/components/ui/Field'
 import { Pill } from '@/components/ui/Pill'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 interface Question {
   id: string
@@ -127,7 +128,7 @@ export function AdminQuestions() {
       </Card>
 
       <div className="flex flex-col gap-3">
-        {questions === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+        {questions === null && <LoadingState />}
 
         {questions?.map((question, index) => (
           <Card key={question.id} className={question.active ? '' : 'opacity-70'}>

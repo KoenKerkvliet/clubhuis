@@ -11,6 +11,7 @@ import { AuraPill, CommentPill, PrivatePill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { ContactsPanel } from '@/components/friends/ContactsPanel'
 import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/icons'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 const MAX_FAVORITES = 20
 
@@ -487,7 +488,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
             </Link>
           )}
 
-          {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+          {stories === null && <LoadingState />}
           {stories?.length === 0 && <Card className="text-center text-ink-400">Nog geen verhalen.</Card>}
           {stories?.map(renderStoryCard)}
         </div>
@@ -538,7 +539,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
             </div>
           )}
 
-          {scribbles === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+          {scribbles === null && <LoadingState />}
           {topLevelScribbles?.length === 0 && <Card className="text-center text-ink-400">Nog geen krabbels.</Card>}
           {topLevelScribbles
             ?.slice()
@@ -604,7 +605,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
             </p>
           </div>
 
-          {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+          {stories === null && <LoadingState />}
           {favoriteStories?.length === 0 && (
             <Card className="text-center text-ink-400">
               Nog geen herinneringen gekozen — markeer een verhaal via de puntjes bij "Verhalen".

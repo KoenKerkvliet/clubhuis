@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button'
 import { Pill } from '@/components/ui/Pill'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { WarningIcon } from '@/components/ui/icons'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 interface ModerationEvent {
   id: string
@@ -73,7 +74,7 @@ export function AdminModeration() {
       <SegmentedTabs value={filter} onChange={setFilter} options={FILTERS} />
 
       <div className="flex flex-col gap-3">
-        {events === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+        {events === null && <LoadingState />}
         {events?.length === 0 && (
           <Card className="text-center text-ink-400">
             <p>Niets tegengehouden. Dat is goed nieuws.</p>

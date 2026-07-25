@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
 import { AuraIcon, CommentIcon, PencilIcon, XIcon } from '@/components/ui/icons'
 import { Avatar } from '@/components/ui/Avatar'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 interface Notification {
   id: string
@@ -147,7 +148,7 @@ export function Notifications() {
       )}
 
       <div className="flex flex-col gap-3">
-        {items === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+        {items === null && <LoadingState />}
         {items?.length === 0 && <Card className="text-center text-ink-400">Nog geen meldingen.</Card>}
 
         {items?.map((n) => {

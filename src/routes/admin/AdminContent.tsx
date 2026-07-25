@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { Pill } from '@/components/ui/Pill'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
+import { LoadingState } from '@/components/ui/LoadingState'
 
 type ContentKind = 'stories' | 'comments' | 'scribbles'
 
@@ -165,7 +166,7 @@ export function AdminContent() {
       {error && <p className="text-sm font-bold text-warn-text">{error}</p>}
 
       <div className="flex flex-col gap-3">
-        {items === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+        {items === null && <LoadingState />}
         {items?.length === 0 && <Card className="text-center text-ink-400">Nog niets geplaatst.</Card>}
 
         {items?.map((item) => (

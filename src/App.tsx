@@ -23,10 +23,12 @@ import { AdminAccounts } from '@/routes/admin/AdminAccounts'
 import { AdminContent } from '@/routes/admin/AdminContent'
 import { AdminModeration } from '@/routes/admin/AdminModeration'
 import { AdminQuestions } from '@/routes/admin/AdminQuestions'
+import { LogoMark } from '@/components/ui/LogoMark'
 
 function LoadingScreen() {
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-cream">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-cream">
+      <LogoMark size={40} className="animate-pulse" />
       <p className="font-hand text-3xl text-blue-500">Clubhuis...</p>
     </div>
   )

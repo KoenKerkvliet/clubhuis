@@ -7,6 +7,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { BigTitle } from '@/components/layout/PageHeader'
 import { AuraPill, CommentPill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
+import { LoadingState } from '@/components/ui/LoadingState'
 import { ArrowRightIcon, MoreIcon } from '@/components/ui/icons'
 
 const PAGE_SIZE = 20
@@ -342,7 +343,7 @@ export function Feed() {
       ))}
 
       <div className="flex flex-col gap-4">
-        {stories === null && <p className="text-sm text-ink-400">Even ophalen...</p>}
+        {stories === null && <LoadingState />}
 
         {stories?.length === 0 && (
           <Card className="text-center text-ink-400">
