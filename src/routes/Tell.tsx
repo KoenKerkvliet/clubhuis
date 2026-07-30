@@ -30,6 +30,26 @@ const HEADLINES = [
   'Je herinneringenboek groeit verder.',
 ]
 
+interface StoryDraft {
+  postKind: 'text' | 'poll'
+  text: string
+  pollOptions: string[]
+  visibility: 'private' | 'friends'
+}
+
+function draftKey(profileId: string) {
+  return `clubhuis:story-draft:${profileId}`
+}
+
+function loadDraft(profileId: string | undefined): StoryDraft | null {
+  if (!profileId) return null
+  try {
+    return JSON.parse(localStorage.getItem(draftKey(profileId)) ?? 'null') as StoryDraft | null
+  } catch {
+    return null
+  }
+}
+
 function pick(list: string[], last: string | null) {
   const options = list.filter((c) => c !== last)
   return options[Math.floor(Math.random() * options.length)]
@@ -39,10 +59,12 @@ export function Tell() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const fileInput = useRef<HTMLInputElement>(null)
-  const [postKind, setPostKind] = useState<'text' | 'poll'>('text')
-  const [text, setText] = useState('')
-  const [pollOptions, setPollOptions] = useState(['', ''])
-  const [visibility, setVisibility] = useState<'private' | 'friends'>('friends')
+  const [initialDraft] = useState(() => loadDraft(profile?.id))
+  const [postKind, setPostKind] = useState<'text' | 'poll'>(initialDraft?.postKind ?? 'text')
+  const [text, setText] = useState(initialDraft?.text ?? '')
+  const [pollOptions, setPollOptions] = useState(initialDraft?.pollOptions ?? ['', ''])
+  const [visibility, setVisibility] = useState<'private' | 'friends'>(initialDraft?.visibility ?? 'friends')
+  const [showRestoredNotice, setShowRestoredNotice] = useState(!!initialDraft?.text)
   const [photo, setPhoto] = useState<File | null>(null)
   const [photoPreview, setPhotoPreview] = useState<string | null>(null)
   const [processingPhoto, setProcessingPhoto] = useState(false)
@@ -59,6 +81,23 @@ export function Tell() {
     setPhotoPreview(url)
     return () => URL.revokeObjectURL(url)
   }, [photo])
+
+  useEffect(() => {
+    if (!profile) return
+    const hasContent = !!text.trim() || pollOptions.some((option) => option.trim())
+    try {
+      if (hasContent) {
+        localStorage.setItem(
+          draftKey(profile.id),
+          JSON.stringify({ postKind, text, pollOptions, visibility } satisfies StoryDraft),
+        )
+      } else {
+        localStorage.removeItem(draftKey(profile.id))
+      }
+    } catch {
+      // Een geblokkeerde opslag mag het schrijven van een verhaal niet hinderen.
+    }
+  }, [profile?.id, postKind, text, pollOptions, visibility])
 
   async function handlePhotoSelect(file: File | undefined) {
     if (!file) return
@@ -135,7 +174,13 @@ export function Tell() {
     })
 
     setSubmitting(false)
+    setShowRestoredNotice(false)
     setConfirmation({ headline: pick(HEADLINES, null), tagline: pick(TAGLINES, null) })
+    try {
+      localStorage.removeItem(draftKey(profile.id))
+    } catch {
+      // Het geplaatste verhaal is al veilig opgeslagen.
+    }
     setText('')
     setPhoto(null)
     setPollOptions(['', ''])
@@ -155,6 +200,12 @@ export function Tell() {
         }}
         options={POST_KINDS}
       />
+
+      {showRestoredNotice && (
+        <p className="rounded-2xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-500">
+          Je vorige concept staat weer klaar.
+        </p>
+      )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Card>
