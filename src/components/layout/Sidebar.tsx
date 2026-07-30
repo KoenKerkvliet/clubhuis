@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { FriendsIcon, MeIcon } from '@/components/ui/icons'
+import { FriendsIcon, MeIcon, PlusIcon } from '@/components/ui/icons'
 import { LogoMark } from '@/components/ui/LogoMark'
 
 function SidebarLink({
@@ -42,6 +42,7 @@ export function Sidebar({ hasNewStories }: { hasNewStories?: boolean }) {
       </NavLink>
 
       <SidebarLink to="/ik" label="Ik" Icon={MeIcon} />
+      <SidebarLink to="/vertellen" label="Vertellen" Icon={PlusIcon} />
       <SidebarLink to="/verhalen" label="Verhalen" Icon={FriendsIcon} badge={hasNewStories} />
     </aside>
   )
