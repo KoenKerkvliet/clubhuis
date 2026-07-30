@@ -548,6 +548,7 @@ export type Database = {
           author_id: string
           created_at: string
           id: string
+          parent_id: string | null
           story_id: string
           text: string
         }
@@ -555,6 +556,7 @@ export type Database = {
           author_id: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           story_id: string
           text: string
         }
@@ -562,6 +564,7 @@ export type Database = {
           author_id?: string
           created_at?: string
           id?: string
+          parent_id?: string | null
           story_id?: string
           text?: string
         }
@@ -571,6 +574,13 @@ export type Database = {
             columns: ["author_id"]
             isOneToOne: false
             referencedRelation: "profile_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "story_comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "story_comments"
             referencedColumns: ["id"]
           },
           {
