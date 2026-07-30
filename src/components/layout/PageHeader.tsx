@@ -36,5 +36,5 @@ export function TitleHeader({ title, onBack, action }: TitleHeaderProps) {
 }
 
 export function BigTitle({ children }: { children: ReactNode }) {
-  return <h1 className="mb-5 text-3xl font-extrabold text-ink-900">{children}</h1>
+  return <h1 className="mb-4 text-2xl font-extrabold text-ink-900 md:mb-5 md:text-3xl">{children}</h1>
 }
