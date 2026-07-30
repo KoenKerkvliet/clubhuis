@@ -17,8 +17,19 @@ import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/
 import { LoadingState } from '@/components/ui/LoadingState'
 
 const MAX_FAVORITES = 20
+const COMMENT_VIEW_STORAGE_KEY = 'clubhuis:comment-view'
 
 type Tab = 'verhalen' | 'overmij' | 'krabbels' | 'vrienden' | 'herinneringen'
+type CommentView = 'collapsed' | 'preview' | 'expanded'
+
+function loadCommentViews(): Record<string, CommentView> {
+  try {
+    const stored = localStorage.getItem(COMMENT_VIEW_STORAGE_KEY)
+    return stored ? (JSON.parse(stored) as Record<string, CommentView>) : {}
+  } catch {
+    return {}
+  }
+}
 
 interface Story {
   id: string
@@ -74,6 +85,8 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const [stories, setStories] = useState<Story[] | null>(null)
   const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean; names: string[] }>>({})
   const [commentsByStory, setCommentsByStory] = useState<Record<string, StoryComment[]>>({})
+  const [commentViewByStory, setCommentViewByStory] =
+    useState<Record<string, CommentView>>(loadCommentViews)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null)
@@ -163,6 +176,19 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
       .eq('story_id', storyId)
       .order('created_at', { ascending: true })
     setCommentsByStory((prev) => ({ ...prev, [storyId]: (data as unknown as StoryComment[]) ?? [] }))
+  }
+
+  function setCommentView(storyId: string, view: CommentView) {
+    setCommentViewByStory((prev) => {
+      const next = { ...prev, [storyId]: view }
+      localStorage.setItem(COMMENT_VIEW_STORAGE_KEY, JSON.stringify(next))
+      return next
+    })
+  }
+
+  function toggleComments(storyId: string) {
+    const current = commentViewByStory[storyId] ?? 'preview'
+    setCommentView(storyId, current === 'collapsed' ? 'preview' : 'collapsed')
   }
 
   async function toggleAura(storyId: string) {
@@ -447,7 +473,10 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
                 names={auraByStory[story.id]?.names}
                 onClick={isOwn ? undefined : () => toggleAura(story.id)}
               />
-              <CommentPill count={commentsByStory[story.id]?.length ?? 0} />
+              <CommentPill
+                count={commentsByStory[story.id]?.length ?? 0}
+                onClick={() => toggleComments(story.id)}
+              />
             </div>
           </>
         )}
@@ -464,12 +493,18 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
           </div>
         )}
 
-        {editingId !== story.id && viewer && (
+        {editingId !== story.id &&
+          viewer &&
+          (commentViewByStory[story.id] ?? 'preview') !== 'collapsed' && (
           <StoryComments
             storyId={story.id}
             comments={commentsByStory[story.id] ?? []}
             viewerId={viewer.id}
             onChanged={() => refreshComments(story.id)}
+            expanded={(commentViewByStory[story.id] ?? 'preview') === 'expanded'}
+            onExpandedChange={(expanded) =>
+              setCommentView(story.id, expanded ? 'expanded' : 'preview')
+            }
           />
         )}
       </Card>
