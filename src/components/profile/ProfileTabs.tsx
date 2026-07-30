@@ -145,7 +145,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
       supabase.from('story_aura').select('story_id, user_id').in('story_id', ids),
       supabase
         .from('story_comments')
-        .select('id, author_id, story_id, parent_id, text, created_at, profiles!story_comments_author_id_fkey(display_name)')
+        .select('id, author_id, story_id, parent_id, text, created_at, profiles!story_comments_author_id_fkey(display_name, avatar_url)')
         .in('story_id', ids)
         .order('created_at', { ascending: true }),
     ])
@@ -181,7 +181,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   async function refreshComments(storyId: string) {
     const { data } = await supabase
       .from('story_comments')
-      .select('id, author_id, story_id, parent_id, text, created_at, profiles!story_comments_author_id_fkey(display_name)')
+      .select('id, author_id, story_id, parent_id, text, created_at, profiles!story_comments_author_id_fkey(display_name, avatar_url)')
       .eq('story_id', storyId)
       .order('created_at', { ascending: true })
     setCommentsByStory((prev) => ({ ...prev, [storyId]: (data as unknown as StoryComment[]) ?? [] }))
