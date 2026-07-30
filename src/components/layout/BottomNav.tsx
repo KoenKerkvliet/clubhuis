@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { FriendsIcon, MeIcon } from '@/components/ui/icons'
+import { FriendsIcon, MeIcon, PlusIcon } from '@/components/ui/icons'
 
 function NavItem({
   to,
@@ -36,6 +36,26 @@ export function BottomNav({ hasNewStories }: { hasNewStories?: boolean }) {
       <ul className="mx-auto flex max-w-md items-center px-3 py-2.5">
         <li className="flex-1">
           <NavItem to="/ik" label="Ik" Icon={MeIcon} />
+        </li>
+        <li className="flex-1">
+          <NavLink
+            to="/vertellen"
+            aria-label="Vertellen"
+            className="flex w-full flex-col items-center gap-0.5 text-xs font-extrabold text-blue-500"
+          >
+            {({ isActive }) => (
+              <>
+                <span
+                  className={`-mt-7 flex h-14 w-14 items-center justify-center rounded-full bg-blue-500 text-paper shadow-soft transition-transform active:scale-95 ${
+                    isActive ? 'ring-4 ring-blue-100' : ''
+                  }`}
+                >
+                  <PlusIcon width={24} height={24} strokeWidth={3} />
+                </span>
+                Vertellen
+              </>
+            )}
+          </NavLink>
         </li>
         <li className="flex-1">
           <NavItem to="/verhalen" label="Verhalen" Icon={FriendsIcon} badge={hasNewStories} />
