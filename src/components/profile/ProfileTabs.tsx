@@ -15,6 +15,7 @@ import { Poll } from '@/components/story/Poll'
 import { ContactsPanel } from '@/components/friends/ContactsPanel'
 import { ArrowRightIcon, CameraIcon, MoreIcon, PlusIcon } from '@/components/ui/icons'
 import { LoadingState } from '@/components/ui/LoadingState'
+import { showToast } from '@/lib/toast'
 
 const MAX_FAVORITES = 20
 const COMMENT_VIEW_STORAGE_KEY = 'clubhuis:comment-view'
@@ -208,12 +209,14 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
         [storyId]: { count: current.count - 1, mine: false, names: current.names.filter((n) => n !== viewer.display_name) },
       }))
       await supabase.from('story_aura').delete().eq('story_id', storyId).eq('user_id', viewer.id)
+      showToast('Aura verwijderd.')
     } else {
       setAuraByStory((prev) => ({
         ...prev,
         [storyId]: { count: current.count + 1, mine: true, names: [...current.names, viewer.display_name] },
       }))
       await supabase.from('story_aura').insert({ story_id: storyId, user_id: viewer.id })
+      showToast('Aura gegeven.')
     }
   }
 
@@ -282,6 +285,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setNewScribble('')
     await supabase.from('scribbles').insert({ profile_id: profileId, author_id: viewer.id, text })
     loadScribbles()
+    showToast('Krabbel geplaatst.')
   }
 
   async function sendReply(parentId: string) {
@@ -291,6 +295,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     setReplyingTo(null)
     await supabase.from('scribbles').insert({ profile_id: profileId, author_id: viewer.id, text, parent_id: parentId })
     loadScribbles()
+    showToast('Antwoord geplaatst.')
   }
 
   const SCRIBBLE_EDIT_WINDOW_MS = 30 * 60 * 1000
@@ -311,6 +316,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     await supabase.from('scribbles').update({ text: trimmed }).eq('id', id)
     setScribbles((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed } : s)) ?? null)
     setEditingScribbleId(null)
+    showToast('Wijziging opgeslagen.')
   }
 
   function renderScribbleEditor(id: string) {
@@ -347,6 +353,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
     await supabase.from('stories').update({ text: trimmed }).eq('id', id)
     setStories((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed } : s)) ?? null)
     setEditingId(null)
+    showToast('Verhaal opgeslagen.')
   }
 
   async function deleteStory(id: string) {
