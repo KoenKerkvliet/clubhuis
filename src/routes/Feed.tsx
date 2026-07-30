@@ -13,6 +13,7 @@ import type { StoryComment } from '@/components/story/StoryComments'
 import { Poll } from '@/components/story/Poll'
 import { LoadingState } from '@/components/ui/LoadingState'
 import { MoreIcon } from '@/components/ui/icons'
+import { showToast } from '@/lib/toast'
 
 const PAGE_SIZE = 20
 const MAX_FAVORITES = 20
@@ -212,12 +213,14 @@ export function Feed() {
         [storyId]: { count: current.count - 1, mine: false, names: current.names.filter((n) => n !== profile.display_name) },
       }))
       await supabase.from('story_aura').delete().eq('story_id', storyId).eq('user_id', profile.id)
+      showToast('Aura verwijderd.')
     } else {
       setAuraByStory((prev) => ({
         ...prev,
         [storyId]: { count: current.count + 1, mine: true, names: [...current.names, profile.display_name] },
       }))
       await supabase.from('story_aura').insert({ story_id: storyId, user_id: profile.id })
+      showToast('Aura gegeven.')
     }
   }
 
@@ -299,6 +302,7 @@ export function Feed() {
     await supabase.from('stories').update({ text: trimmed }).eq('id', id)
     setStories((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed } : s)) ?? null)
     setEditingId(null)
+    showToast('Verhaal opgeslagen.')
   }
 
   async function deleteStory(id: string) {
