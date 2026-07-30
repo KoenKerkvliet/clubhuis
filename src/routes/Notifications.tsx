@@ -16,7 +16,6 @@ import {
 } from '@/components/ui/icons'
 import { Avatar } from '@/components/ui/Avatar'
 import { LoadingState } from '@/components/ui/LoadingState'
-import { setAppBadge } from '@/lib/appBadge'
 import { announceNotificationsChanged } from '@/lib/notificationEvents'
 
 interface NotificationPayload {
@@ -157,6 +156,13 @@ export function Notifications() {
   useEffect(() => {
     if (!profile) return
     load()
+    const interval = window.setInterval(load, 30_000)
+    const onVisible = () => document.visibilityState === 'visible' && load()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [profile?.id])
 
   const filteredItems = useMemo(
@@ -249,10 +255,6 @@ export function Notifications() {
     )
     await supabase.from('notifications').update({ read: true }).in('id', unreadIds)
     announceNotificationsChanged()
-    if (profile?.badges_enabled) {
-      const remaining = Math.max(0, (items?.filter((item) => !item.read).length ?? 0) - unreadIds.length)
-      await setAppBadge(remaining)
-    }
   }
 
   async function respond(friendshipId: string, status: 'accepted' | 'declined', group: NotificationGroup) {
@@ -272,7 +274,6 @@ export function Notifications() {
     setItems([])
     await supabase.from('notifications').delete().eq('user_id', profile.id)
     announceNotificationsChanged()
-    if (profile.badges_enabled) await setAppBadge(0)
   }
 
   function namesFor(group: NotificationGroup) {
