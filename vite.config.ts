@@ -19,6 +19,9 @@ export default defineConfig(() => {
       react(),
       tailwindcss(),
       VitePWA({
+        strategies: 'injectManifest',
+        srcDir: 'src',
+        filename: 'sw.ts',
         // Bewust 'prompt' en geen 'autoUpdate': een nieuwe versie mag de pagina nooit
         // zomaar herladen terwijl een kind een verhaal aan het typen is.
         registerType: 'prompt',
@@ -49,7 +52,7 @@ export default defineConfig(() => {
             },
           ],
         },
-        workbox: {
+        injectManifest: {
           globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
         },
       }),

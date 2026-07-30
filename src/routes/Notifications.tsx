@@ -32,6 +32,7 @@ const ICONS: Record<string, { Icon: typeof AuraIcon; bg: string; text: string }>
   scribble: { Icon: PencilIcon, bg: 'bg-aura-soft', text: 'text-aura-text' },
   scribble_reply: { Icon: PencilIcon, bg: 'bg-aura-soft', text: 'text-aura-text' },
   comment: { Icon: CommentIcon, bg: 'bg-avatar-green-bg', text: 'text-avatar-green-text' },
+  new_story: { Icon: PencilIcon, bg: 'bg-avatar-blue-bg', text: 'text-avatar-blue-text' },
 }
 
 function timeAgo(iso: string) {
@@ -111,6 +112,8 @@ export function Notifications() {
         return { actor, rest: 'reageerde op je krabbel.' }
       case 'comment':
         return { actor, rest: 'reageerde op je verhaal.' }
+      case 'new_story':
+        return { actor, rest: 'plaatste een nieuw verhaal.' }
       case 'friend_accepted':
         return { actor, rest: 'is nu je vriend.' }
       default:

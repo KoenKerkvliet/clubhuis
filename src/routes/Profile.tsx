@@ -8,6 +8,7 @@ import { TitleHeader } from '@/components/layout/PageHeader'
 import { THEME_COLORS, THEME_COLOR_KEYS, applyThemeColor } from '@/lib/themeColors'
 import { CheckIcon } from '@/components/ui/icons'
 import { requestBadgePermission, setAppBadge, supportsAppBadge } from '@/lib/appBadge'
+import { subscribeCurrentDevice, unsubscribeCurrentDevice } from '@/lib/pushSubscription'
 
 export function Profile() {
   const { profile, refreshProfile, completePasswordReset } = useAuth()
@@ -87,6 +88,12 @@ export function Profile() {
         )
         return
       }
+      try {
+        await subscribeCurrentDevice(profile.id)
+      } catch (error) {
+        setBadgeError(error instanceof Error ? error.message : 'Achtergrondmeldingen inschakelen lukte niet.')
+        return
+      }
     }
 
     setSavingBadge(true)
@@ -95,7 +102,10 @@ export function Profile() {
       setBadgeError('Opslaan lukte niet. Probeer het nog eens.')
     } else {
       setBadgesEnabled(next)
-      if (!next) await setAppBadge(0)
+      if (!next) {
+        await unsubscribeCurrentDevice()
+        await setAppBadge(0)
+      }
       await refreshProfile()
     }
     setSavingBadge(false)

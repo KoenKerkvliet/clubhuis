@@ -129,6 +129,11 @@ export function Tell() {
       }
     }
 
+    // Een tijdelijk pushprobleem mag een succesvol geplaatst verhaal niet terugdraaien.
+    supabase.functions.invoke('badge-push', {
+      body: { action: 'story', story_id: inserted.id },
+    })
+
     setSubmitting(false)
     setConfirmation({ headline: pick(HEADLINES, null), tagline: pick(TAGLINES, null) })
     setText('')
