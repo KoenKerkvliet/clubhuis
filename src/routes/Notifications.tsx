@@ -8,6 +8,7 @@ import { IconButton } from '@/components/ui/IconButton'
 import { AuraIcon, CommentIcon, PencilIcon, XIcon } from '@/components/ui/icons'
 import { Avatar } from '@/components/ui/Avatar'
 import { LoadingState } from '@/components/ui/LoadingState'
+import { setAppBadge } from '@/lib/appBadge'
 
 interface Notification {
   id: string
@@ -76,6 +77,7 @@ export function Notifications() {
     }
 
     await supabase.from('notifications').update({ read: true }).eq('user_id', profile?.id ?? '').eq('read', false)
+    if (profile?.badges_enabled) await setAppBadge(0)
   }
 
   async function respond(friendshipId: string, status: 'accepted' | 'declined', notificationId: string) {

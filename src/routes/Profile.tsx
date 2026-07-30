@@ -7,6 +7,7 @@ import { Field } from '@/components/ui/Field'
 import { TitleHeader } from '@/components/layout/PageHeader'
 import { THEME_COLORS, THEME_COLOR_KEYS, applyThemeColor } from '@/lib/themeColors'
 import { CheckIcon } from '@/components/ui/icons'
+import { requestBadgePermission, setAppBadge, supportsAppBadge } from '@/lib/appBadge'
 
 export function Profile() {
   const { profile, refreshProfile, completePasswordReset } = useAuth()
@@ -20,6 +21,9 @@ export function Profile() {
   const [statusSaved, setStatusSaved] = useState(false)
 
   const [themeColor, setThemeColor] = useState(profile?.theme_color ?? 'blauw')
+  const [badgesEnabled, setBadgesEnabled] = useState(profile?.badges_enabled ?? false)
+  const [badgeError, setBadgeError] = useState<string | null>(null)
+  const [savingBadge, setSavingBadge] = useState(false)
 
   const [newPassword, setNewPassword] = useState('')
   const [repeatPassword, setRepeatPassword] = useState('')
@@ -66,6 +70,35 @@ export function Profile() {
       return
     }
     await refreshProfile()
+  }
+
+  async function toggleBadges() {
+    if (!profile || savingBadge) return
+    const next = !badgesEnabled
+    setBadgeError(null)
+
+    if (next) {
+      const allowed = await requestBadgePermission()
+      if (!allowed) {
+        setBadgeError(
+          supportsAppBadge()
+            ? 'Geef Clubhuis toestemming voor meldingen in de instellingen van je telefoon.'
+            : 'Dit apparaat ondersteunt geen appbadges voor Clubhuis.',
+        )
+        return
+      }
+    }
+
+    setSavingBadge(true)
+    const { error } = await supabase.from('profiles').update({ badges_enabled: next }).eq('id', profile.id)
+    if (error) {
+      setBadgeError('Opslaan lukte niet. Probeer het nog eens.')
+    } else {
+      setBadgesEnabled(next)
+      if (!next) await setAppBadge(0)
+      await refreshProfile()
+    }
+    setSavingBadge(false)
   }
 
   async function savePassword() {
@@ -171,6 +204,35 @@ export function Profile() {
             )
           })}
         </div>
+      </Card>
+
+      <Card>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-extrabold text-ink-900">Badge op app-icoon</p>
+            <p className="mt-1 text-sm text-ink-400">
+              Toon hoeveel nieuwe verhalen en belangrijke meldingen op je wachten.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={badgesEnabled}
+            aria-label="Badge op app-icoon"
+            disabled={savingBadge}
+            onClick={toggleBadges}
+            className={`relative h-8 w-14 shrink-0 rounded-full transition-colors ${
+              badgesEnabled ? 'bg-blue-500' : 'bg-ink-200'
+            } disabled:opacity-50`}
+          >
+            <span
+              className={`absolute top-1 h-6 w-6 rounded-full bg-paper shadow-sm transition-transform ${
+                badgesEnabled ? 'translate-x-7' : 'translate-x-1'
+              }`}
+            />
+          </button>
+        </div>
+        {badgeError && <p className="mt-3 text-sm font-bold text-warn-text">{badgeError}</p>}
       </Card>
 
       <Card>
