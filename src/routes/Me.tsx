@@ -19,7 +19,9 @@ export function Me() {
     try {
       const resized = await resizeImageToWebp(file, AVATAR_MAX_DIMENSION, AVATAR_QUALITY)
       const path = `${profile.id}/${crypto.randomUUID()}.webp`
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, resized)
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, resized, { cacheControl: '31536000' })
       if (uploadError) throw uploadError
 
       const previousPath = profile.avatar_url

@@ -90,7 +90,9 @@ export function Tell() {
     if (postKind === 'text' && photo) {
       const ext = photo.name.split('.').pop() ?? 'jpg'
       photoPath = `${profile.id}/${crypto.randomUUID()}.${ext}`
-      const { error: uploadError } = await supabase.storage.from('story-photos').upload(photoPath, photo)
+      const { error: uploadError } = await supabase.storage
+        .from('story-photos')
+        .upload(photoPath, photo, { cacheControl: '31536000' })
       if (uploadError) {
         setError('De foto kon niet worden geüpload. Probeer het opnieuw.')
         setSubmitting(false)

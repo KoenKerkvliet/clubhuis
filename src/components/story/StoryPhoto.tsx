@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-
-const SIGNED_URL_TTL_SECONDS = 60 * 60
+import { getSignedImageUrl } from '@/lib/signedImageUrl'
 
 /** De story-photos bucket is privé; we tonen een foto altijd via een tijdelijke ondertekende URL. */
 export function StoryPhoto({ path }: { path: string }) {
@@ -13,13 +11,10 @@ export function StoryPhoto({ path }: { path: string }) {
     setUrl(null)
     setFailed(false)
 
-    supabase.storage
-      .from('story-photos')
-      .createSignedUrl(path, SIGNED_URL_TTL_SECONDS)
-      .then(({ data, error }) => {
+    getSignedImageUrl('story-photos', path).then((signedUrl) => {
         if (!active) return
-        if (error || !data) setFailed(true)
-        else setUrl(data.signedUrl)
+        if (!signedUrl) setFailed(true)
+        else setUrl(signedUrl)
       })
 
     return () => {
@@ -39,6 +34,7 @@ export function StoryPhoto({ path }: { path: string }) {
       alt=""
       className="mt-3 max-h-[420px] w-full rounded-card object-cover"
       loading="lazy"
+      decoding="async"
     />
   )
 }
