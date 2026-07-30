@@ -6,6 +6,7 @@ import { Header } from '@/components/layout/Header'
 import { BottomNav } from '@/components/layout/BottomNav'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { setAppBadge } from '@/lib/appBadge'
+import { NOTIFICATIONS_CHANGED_EVENT } from '@/lib/notificationEvents'
 
 const IMPORTANT_NOTIFICATION_TYPES = [
   'comment',
@@ -59,16 +60,18 @@ export function AppShell() {
     }
 
     refreshUnreadCount()
-    const interval = window.setInterval(refreshUnreadCount, 60_000)
+    const interval = window.setInterval(refreshUnreadCount, 30_000)
     const onVisible = () => {
       if (document.visibilityState === 'visible') refreshUnreadCount()
     }
     document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshUnreadCount)
 
     return () => {
       active = false
       window.clearInterval(interval)
       document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshUnreadCount)
     }
   }, [profile?.id, location.pathname])
 
