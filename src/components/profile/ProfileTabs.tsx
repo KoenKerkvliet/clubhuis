@@ -528,7 +528,7 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
 
   return (
     <div className="flex flex-col gap-4">
-      <SegmentedTabs value={tab} onChange={setTab} options={tabOptions} />
+      <SegmentedTabs value={tab} onChange={setTab} options={tabOptions} scrollable />
 
       {tab === 'verhalen' && (
         <div className="flex flex-col gap-3">
