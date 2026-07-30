@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { ArrowRightIcon } from '@/components/ui/icons'
+import { showToast } from '@/lib/toast'
 
 export interface StoryComment {
   id: string
@@ -24,6 +25,31 @@ interface StoryCommentsProps {
 
 const PREVIEW_COUNT = 2
 
+function commentDraftKey(viewerId: string, storyId: string) {
+  return `clubhuis:comment-draft:${viewerId}:${storyId}`
+}
+
+function replyDraftKey(viewerId: string, storyId: string, commentId: string) {
+  return `clubhuis:reply-draft:${viewerId}:${storyId}:${commentId}`
+}
+
+function readDraft(key: string) {
+  try {
+    return localStorage.getItem(key) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function storeDraft(key: string, value: string) {
+  try {
+    if (value) localStorage.setItem(key, value)
+    else localStorage.removeItem(key)
+  } catch {
+    // Reacties blijven ook zonder lokale opslag gewoon werken.
+  }
+}
+
 export function StoryComments({
   storyId,
   comments,
@@ -32,12 +58,21 @@ export function StoryComments({
   expanded,
   onExpandedChange,
 }: StoryCommentsProps) {
-  const [draft, setDraft] = useState('')
+  const [draft, setDraft] = useState(() => readDraft(commentDraftKey(viewerId, storyId)))
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    storeDraft(commentDraftKey(viewerId, storyId), draft)
+  }, [draft, storyId, viewerId])
+
+  useEffect(() => {
+    if (!replyingTo) return
+    storeDraft(replyDraftKey(viewerId, storyId, replyingTo), replyDraft)
+  }, [replyDraft, replyingTo, storyId, viewerId])
 
   const childrenByParent = useMemo(() => {
     const map: Record<string, StoryComment[]> = {}
@@ -63,10 +98,14 @@ export function StoryComments({
     })
     if (!error) {
       if (parentId) {
+        storeDraft(replyDraftKey(viewerId, storyId, parentId), '')
         setReplyDraft('')
         setReplyingTo(null)
+        showToast('Antwoord geplaatst.')
       } else {
+        storeDraft(commentDraftKey(viewerId, storyId), '')
         setDraft('')
+        showToast('Reactie geplaatst.')
       }
       await onChanged()
     }
@@ -81,13 +120,15 @@ export function StoryComments({
     if (!error) {
       setEditingId(null)
       await onChanged()
+      showToast('Wijziging opgeslagen.')
     }
     setBusy(false)
   }
 
   function startReply(comment: StoryComment) {
-    setReplyingTo(replyingTo === comment.id ? null : comment.id)
-    setReplyDraft('')
+    const nextId = replyingTo === comment.id ? null : comment.id
+    setReplyingTo(nextId)
+    setReplyDraft(nextId ? readDraft(replyDraftKey(viewerId, storyId, nextId)) : '')
     setEditingId(null)
   }
 
