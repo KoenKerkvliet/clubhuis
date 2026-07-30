@@ -109,9 +109,9 @@ export function AppShell() {
   return (
     <div className="min-h-dvh md:flex">
       <Sidebar hasNewStories={hasNewStories} />
-      <div className="min-w-0 flex-1 pb-28 md:pb-10">
+      <div className="min-w-0 flex-1">
         <Header />
-        <main className="mx-auto max-w-md px-4 pt-6 md:max-w-xl md:px-8 lg:max-w-2xl">
+        <main className="mx-auto max-w-md px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-4 md:max-w-xl md:px-8 md:pb-10 md:pt-6 lg:max-w-2xl">
           <Outlet />
         </main>
         <BottomNav hasNewStories={hasNewStories} />
