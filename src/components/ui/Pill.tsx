@@ -15,7 +15,9 @@ interface AuraPillProps {
 export function AuraPill({ count, active = false, onClick, className = '', names }: AuraPillProps) {
   const classes = `inline-flex items-center gap-1.5 rounded-pill px-3.5 py-1.5 text-sm font-extrabold transition-colors ${
     active ? 'bg-aura text-paper' : 'bg-aura-soft text-aura-text'
-  } ${onClick ? 'active:scale-95' : ''} ${className}`
+  } ${onClick ? 'transition-transform active:scale-95' : ''} ${
+    active ? 'motion-safe:animate-[aura-pop_280ms_ease-out]' : ''
+  } ${className}`
   const content = (
     <>
       <AuraIcon width={16} height={16} />
