@@ -15,7 +15,7 @@ export function SegmentedTabs<T extends string>({
     <div
       className={
         scrollable
-          ? '-mx-4 flex snap-x gap-1.5 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
+          ? 'flex snap-x scroll-px-2 gap-1.5 overflow-x-auto pb-1 pr-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden'
           : 'flex flex-wrap gap-1.5'
       }
     >
