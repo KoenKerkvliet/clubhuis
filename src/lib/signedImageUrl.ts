@@ -74,3 +74,12 @@ export function getSignedImageUrl(bucket: string, path: string): Promise<string 
   memoryCache.set(key, { promise, expiresAt })
   return promise
 }
+
+export function clearSignedImageUrlCache() {
+  memoryCache.clear()
+  try {
+    sessionStorage.removeItem(SESSION_CACHE_KEY)
+  } catch {
+    // Uitloggen moet ook lukken wanneer sessieopslag geblokkeerd is.
+  }
+}
