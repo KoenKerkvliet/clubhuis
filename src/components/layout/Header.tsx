@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar'
 import { IconButton } from '@/components/ui/IconButton'
 import { LogoMark } from '@/components/ui/LogoMark'
 import { BellIcon, ShareIcon } from '@/components/ui/icons'
+import { NOTIFICATIONS_CHANGED_EVENT } from '@/lib/notificationEvents'
 
 export function Header() {
   const { profile, signOut } = useAuth()
@@ -16,13 +17,27 @@ export function Header() {
 
   useEffect(() => {
     if (!profile) return
-    supabase
-      .from('notifications')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', profile.id)
-      .eq('read', false)
-      .then(({ count }) => setHasNotifications(!!count))
-  }, [profile])
+    let active = true
+    function refreshNotifications() {
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', profile!.id)
+        .eq('read', false)
+        .then(({ count }) => active && setHasNotifications(!!count))
+    }
+    refreshNotifications()
+    const interval = window.setInterval(refreshNotifications, 30_000)
+    const onVisible = () => document.visibilityState === 'visible' && refreshNotifications()
+    window.addEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshNotifications)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      active = false
+      window.clearInterval(interval)
+      window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refreshNotifications)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [profile?.id])
 
   useEffect(() => {
     function onOutsideClick(e: MouseEvent) {
