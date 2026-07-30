@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -52,6 +53,9 @@ function formatTime(iso: string) {
 
 export function Feed() {
   const { profile } = useAuth()
+  const [searchParams] = useSearchParams()
+  const targetStoryId = searchParams.get('story')
+  const openTargetComments = searchParams.get('comments') === '1'
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [stories, setStories] = useState<FeedStory[] | null>(null)
@@ -70,7 +74,9 @@ export function Feed() {
   const [reportReason, setReportReason] = useState('')
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
   const [reportError, setReportError] = useState<string | null>(null)
+  const [highlightedStoryId, setHighlightedStoryId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const handledTargetRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (profile) loadIncoming()
@@ -92,7 +98,24 @@ export function Feed() {
 
   useEffect(() => {
     if (profile) loadFeed()
-  }, [page, profile])
+  }, [page, profile, targetStoryId])
+
+  useEffect(() => {
+    if (!targetStoryId || !stories?.some((story) => story.id === targetStoryId)) return
+    const targetKey = `${targetStoryId}:${openTargetComments}`
+    if (handledTargetRef.current === targetKey) return
+    handledTargetRef.current = targetKey
+    if (openTargetComments) setCommentView(targetStoryId, 'expanded')
+    setHighlightedStoryId(targetStoryId)
+    window.setTimeout(() => {
+      document.getElementById(`story-${targetStoryId}`)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      })
+    }, 100)
+    const timeout = window.setTimeout(() => setHighlightedStoryId(null), 2400)
+    return () => window.clearTimeout(timeout)
+  }, [stories, targetStoryId, openTargetComments])
 
   useEffect(() => {
     if (!openMenuId) return
@@ -117,7 +140,17 @@ export function Feed() {
       .eq('visibility', 'friends')
       .order('created_at', { ascending: false })
       .range(from, to)
-    const rows = (data as unknown as FeedStory[]) ?? []
+    let rows = (data as unknown as FeedStory[]) ?? []
+    if (targetStoryId && !rows.some((story) => story.id === targetStoryId)) {
+      const { data: targetStory } = await supabase
+        .from('stories')
+        .select(
+          'id, text, photo_path, visibility, created_at, author_id, is_favorite, kind, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
+        )
+        .eq('id', targetStoryId)
+        .maybeSingle()
+      if (targetStory) rows = [targetStory as unknown as FeedStory, ...rows]
+    }
     setStories(rows)
     setTotalCount(count ?? 0)
 
@@ -374,7 +407,15 @@ export function Feed() {
           }
 
           return (
-            <Card key={story.id} className="relative">
+            <Card
+              key={story.id}
+              id={`story-${story.id}`}
+              className={`relative scroll-mt-24 border transition-all duration-700 ${
+                highlightedStoryId === story.id
+                  ? 'border-blue-300 bg-blue-50/60 shadow-soft'
+                  : 'border-transparent'
+              }`}
+            >
               {editingId !== story.id && (
                 <div className="absolute right-3 top-3" ref={openMenuId === story.id ? menuRef : undefined}>
                   <button
