@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
+import { Avatar } from '@/components/ui/Avatar'
 import { ArrowRightIcon } from '@/components/ui/icons'
 import { showToast } from '@/lib/toast'
 
@@ -11,7 +12,7 @@ export interface StoryComment {
   parent_id: string | null
   text: string
   created_at: string
-  profiles: { display_name: string } | null
+  profiles: { display_name: string; avatar_url: string | null } | null
 }
 
 interface StoryCommentsProps {
@@ -165,21 +166,30 @@ export function StoryComments({
           </div>
         ) : (
           <>
-            <p className="text-sm text-ink-700">
-              <span className="font-extrabold text-ink-900">
-                {comment.profiles?.display_name ?? 'Iemand'}
-              </span>{' '}
-              {comment.text}
-            </p>
-            <div className="mt-1 flex gap-3 text-xs font-extrabold text-ink-400">
-              <button type="button" onClick={() => startReply(comment)}>
-                Beantwoorden
-              </button>
-              {comment.author_id === viewerId && (
-                <button type="button" onClick={() => startEdit(comment)}>
-                  Bewerken
-                </button>
-              )}
+            <div className="flex items-start gap-2">
+              <Avatar
+                name={comment.profiles?.display_name ?? 'Iemand'}
+                avatarPath={comment.profiles?.avatar_url}
+                size={depth ? 20 : 24}
+              />
+              <div className="min-w-0">
+                <p className="rounded-2xl rounded-tl-md bg-blue-50 px-3 py-1.5 text-sm leading-snug text-ink-700">
+                  <span className="font-extrabold text-ink-900">
+                    {comment.profiles?.display_name ?? 'Iemand'}
+                  </span>{' '}
+                  {comment.text}
+                </p>
+                <div className="mt-0.5 flex gap-3 pl-2 text-[11px] font-extrabold text-ink-400">
+                  <button type="button" onClick={() => startReply(comment)}>
+                    Beantwoorden
+                  </button>
+                  {comment.author_id === viewerId && (
+                    <button type="button" onClick={() => startEdit(comment)}>
+                      Bewerken
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           </>
         )}
@@ -208,7 +218,7 @@ export function StoryComments({
         )}
 
         {replies.length > 0 && (
-          <div className="mt-3 flex flex-col gap-3">
+          <div className="mt-2 flex flex-col gap-2">
             {replies.map((reply) => renderComment(reply, depth + 1))}
           </div>
         )}
@@ -217,7 +227,7 @@ export function StoryComments({
   }
 
   return (
-    <div className="mt-4 flex flex-col gap-3 border-t border-blue-100/70 pt-4">
+    <div className="mt-4 flex flex-col gap-2.5 border-t border-blue-100/70 pt-3 motion-safe:animate-[comments-in_180ms_ease-out]">
       {hiddenCount > 0 && (
         <button
           type="button"
