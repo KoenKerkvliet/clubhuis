@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Card } from '@/components/ui/Card'
@@ -81,7 +81,11 @@ function timeAgo(iso: string) {
 
 export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: string; displayName: string; isOwn: boolean }) {
   const { profile: viewer } = useAuth()
-  const [tab, setTab] = useState<Tab>('verhalen')
+  const [searchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const [tab, setTab] = useState<Tab>(
+    requestedTab === 'krabbels' ? 'krabbels' : 'verhalen',
+  )
   const [stories, setStories] = useState<Story[] | null>(null)
   const [auraByStory, setAuraByStory] = useState<Record<string, { count: number; mine: boolean; names: string[] }>>({})
   const [commentsByStory, setCommentsByStory] = useState<Record<string, StoryComment[]>>({})
@@ -100,6 +104,10 @@ export function ProfileTabs({ profileId, displayName, isOwn }: { profileId: stri
   const [editScribbleText, setEditScribbleText] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (requestedTab === 'krabbels') setTab('krabbels')
+  }, [requestedTab])
 
   useEffect(() => {
     if (tab === 'verhalen' || tab === 'herinneringen') loadStories()
