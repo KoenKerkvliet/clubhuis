@@ -18,9 +18,20 @@ interface StoryCommentsProps {
   comments: StoryComment[]
   viewerId: string
   onChanged: () => Promise<void>
+  expanded: boolean
+  onExpandedChange: (expanded: boolean) => void
 }
 
-export function StoryComments({ storyId, comments, viewerId, onChanged }: StoryCommentsProps) {
+const PREVIEW_COUNT = 2
+
+export function StoryComments({
+  storyId,
+  comments,
+  viewerId,
+  onChanged,
+  expanded,
+  onExpandedChange,
+}: StoryCommentsProps) {
   const [draft, setDraft] = useState('')
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyDraft, setReplyDraft] = useState('')
@@ -37,6 +48,8 @@ export function StoryComments({ storyId, comments, viewerId, onChanged }: StoryC
   }, [comments])
 
   const topLevel = comments.filter((comment) => !comment.parent_id)
+  const hiddenCount = Math.max(0, topLevel.length - PREVIEW_COUNT)
+  const visibleComments = expanded ? topLevel : topLevel.slice(-PREVIEW_COUNT)
 
   async function sendComment(parentId: string | null) {
     const text = (parentId ? replyDraft : draft).trim()
@@ -164,7 +177,20 @@ export function StoryComments({ storyId, comments, viewerId, onChanged }: StoryC
 
   return (
     <div className="mt-4 flex flex-col gap-3 border-t border-blue-100/70 pt-4">
-      {topLevel.map((comment) => renderComment(comment))}
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => onExpandedChange(!expanded)}
+          className="self-start rounded-full bg-blue-50 px-3 py-1.5 text-xs font-extrabold text-blue-500 transition-colors hover:bg-blue-100 active:scale-95"
+        >
+          {expanded
+            ? 'Minder reacties tonen'
+            : hiddenCount === 1
+              ? '1 eerdere reactie tonen'
+              : `${hiddenCount} eerdere reacties tonen`}
+        </button>
+      )}
+      {visibleComments.map((comment) => renderComment(comment))}
       <div className="flex items-center gap-2">
         <input
           className="w-full rounded-full bg-cream px-4 py-2 text-ink-700 outline-none placeholder:text-ink-400/60"
