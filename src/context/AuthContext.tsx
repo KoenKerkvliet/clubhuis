@@ -4,6 +4,8 @@ import type { FunctionsHttpError } from '@supabase/supabase-js'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/types/database'
+import { clearPhotoCache } from '@/lib/photoCache'
+import { clearSignedImageUrlCache } from '@/lib/signedImageUrl'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -113,6 +115,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: error?.message ?? null }
       },
       async signOut() {
+        await clearPhotoCache()
+        clearSignedImageUrlCache()
         await supabase.auth.signOut()
       },
       async refreshProfile() {
