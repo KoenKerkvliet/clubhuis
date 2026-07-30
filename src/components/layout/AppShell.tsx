@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/layout/BottomNav'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { setAppBadge } from '@/lib/appBadge'
 import { NOTIFICATIONS_CHANGED_EVENT } from '@/lib/notificationEvents'
+import { ToastViewport } from '@/components/ui/ToastViewport'
 
 const IMPORTANT_NOTIFICATION_TYPES = [
   'comment',
@@ -114,6 +115,7 @@ export function AppShell() {
           <Outlet />
         </main>
         <BottomNav hasNewStories={hasNewStories} />
+        <ToastViewport />
       </div>
     </div>
   )
