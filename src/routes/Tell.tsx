@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { resizeImageToWebp } from '@/lib/image'
+import { countDistinctStoryTags, extractStoryTags, MAX_STORY_TAGS } from '@/lib/hashtags'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { SegmentedTabs } from '@/components/ui/SegmentedTabs'
@@ -56,7 +57,7 @@ function pick(list: string[], last: string | null) {
 }
 
 export function Tell() {
-  const { profile } = useAuth()
+  const { profile, refreshProfile } = useAuth()
   const navigate = useNavigate()
   const fileInput = useRef<HTMLInputElement>(null)
   const [initialDraft] = useState(() => loadDraft(profile?.id))
@@ -71,6 +72,10 @@ export function Tell() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmation, setConfirmation] = useState<{ headline: string; tagline: string } | null>(null)
+  const [dismissingIntro, setDismissingIntro] = useState(false)
+  const tags = useMemo(() => extractStoryTags(text), [text])
+  const tagCount = useMemo(() => countDistinctStoryTags(text), [text])
+  const showHashtagIntro = !!profile && !profile.hashtag_intro_seen_at
 
   useEffect(() => {
     if (!photo) {
@@ -116,6 +121,11 @@ export function Tell() {
     e.preventDefault()
     if (!profile || !text.trim()) return
 
+    if (tagCount > MAX_STORY_TAGS) {
+      setError(`Kies maximaal ${MAX_STORY_TAGS} hashtags per verhaal.`)
+      return
+    }
+
     const trimmedOptions = pollOptions.map((o) => o.trim()).filter(Boolean)
     if (postKind === 'poll' && trimmedOptions.length < 2) {
       setError('Geef minstens twee antwoordmogelijkheden op.')
@@ -147,6 +157,7 @@ export function Tell() {
         photo_path: photoPath,
         visibility,
         kind: postKind,
+        tags,
       })
       .select('id')
       .single()
@@ -188,6 +199,18 @@ export function Tell() {
     if (fileInput.current) fileInput.current.value = ''
   }
 
+  async function dismissHashtagIntro() {
+    if (!profile) return
+    setDismissingIntro(true)
+    const seenAt = new Date().toISOString()
+    const { error } = await supabase
+      .from('profiles')
+      .update({ hashtag_intro_seen_at: seenAt })
+      .eq('id', profile.id)
+    if (!error) await refreshProfile()
+    setDismissingIntro(false)
+  }
+
   return (
     <div className="flex flex-col gap-5">
       <TitleHeader title={postKind === 'poll' ? 'Nieuwe poll' : 'Jouw verhaal'} />
@@ -207,6 +230,26 @@ export function Tell() {
         </p>
       )}
 
+      {showHashtagIntro && (
+        <Card className="bg-blue-50">
+          <p className="font-extrabold text-ink-900">Verhalen terugvinden met hashtags</p>
+          <p className="mt-1 text-sm font-semibold leading-relaxed text-ink-500">
+            Zet # voor een belangrijk woord, bijvoorbeeld #vakantie of #groep8. Zo kunnen jij en je
+            vrienden verhalen over hetzelfde onderwerp later makkelijk terugvinden. Kies maximaal drie
+            hashtags per verhaal.
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-3"
+            onClick={dismissHashtagIntro}
+            disabled={dismissingIntro}
+          >
+            {dismissingIntro ? 'Even wachten...' : 'Snap ik!'}
+          </Button>
+        </Card>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Card>
           <textarea
@@ -218,6 +261,22 @@ export function Tell() {
             onChange={(e) => setText(e.target.value)}
             required
           />
+
+          {tags.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {tags.map((tag) => (
+                <span key={tag} className="rounded-full bg-blue-100 px-3 py-1 text-sm font-extrabold text-blue-500">
+                  #{tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {tagCount > MAX_STORY_TAGS && (
+            <p className="mt-2 text-sm font-bold text-warn-text">
+              Je gebruikt {tagCount} hashtags. Kies er maximaal {MAX_STORY_TAGS}.
+            </p>
+          )}
 
           {postKind === 'poll' ? (
             <div className="mt-3 flex flex-col gap-2">
@@ -337,6 +396,7 @@ export function Tell() {
             submitting ||
             processingPhoto ||
             !text.trim() ||
+            tagCount > MAX_STORY_TAGS ||
             (postKind === 'poll' && pollOptions.filter((o) => o.trim()).length < 2)
           }
           className="w-full"
