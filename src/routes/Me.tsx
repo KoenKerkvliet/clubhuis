@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { resizeImageToWebp } from '@/lib/image'
@@ -11,6 +11,35 @@ export function Me() {
   const { profile, refreshProfile } = useAuth()
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoError, setPhotoError] = useState<string | null>(null)
+  const tabsRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const root = tabsRef.current
+    if (!root) return
+    const rootEl = root
+
+    function replaceText(node: Node) {
+      node.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE && child.textContent?.includes('Verhaal vertellen')) {
+          child.textContent = child.textContent.replace('Verhaal vertellen', 'Samen spel spelen')
+        } else {
+          replaceText(child)
+        }
+      })
+    }
+
+    function syncGamesCta() {
+      const link = rootEl.querySelector<HTMLAnchorElement>('a[href="/vertellen"]')
+      if (!link) return
+      link.setAttribute('href', '/spellen')
+      replaceText(link)
+    }
+
+    syncGamesCta()
+    const observer = new MutationObserver(syncGamesCta)
+    observer.observe(rootEl, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
 
   async function handleAvatarChange(file: File) {
     if (!profile) return
@@ -53,7 +82,9 @@ export function Me() {
         {photoError && <p className="mt-2 text-sm font-semibold text-warn-text">{photoError}</p>}
       </div>
 
-      <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn />
+      <div ref={tabsRef}>
+        <ProfileTabs profileId={profile.id} displayName={profile.display_name} isOwn />
+      </div>
     </div>
   )
 }
