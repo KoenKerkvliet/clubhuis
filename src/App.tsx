@@ -19,6 +19,7 @@ import { Me } from '@/routes/Me'
 import { Profile } from '@/routes/Profile'
 import { Share } from '@/routes/Share'
 import { Notifications } from '@/routes/Notifications'
+import { Games } from '@/routes/Games'
 import { AdminOverview } from '@/routes/admin/AdminOverview'
 import { AdminAccounts } from '@/routes/admin/AdminAccounts'
 import { AdminContent } from '@/routes/admin/AdminContent'
@@ -123,6 +124,7 @@ export function App() {
         <Route path="/verhalen/:username" element={<FriendProfile />} />
         <Route path="/vertellen" element={<Tell />} />
         <Route path="/meldingen" element={<Notifications />} />
+        <Route path="/spellen" element={<Games />} />
         <Route path="*" element={<Navigate to="/ik" replace />} />
       </Route>
     </Routes>
