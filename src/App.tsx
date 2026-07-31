@@ -21,6 +21,7 @@ import { Share } from '@/routes/Share'
 import { Notifications } from '@/routes/Notifications'
 import { Games } from '@/routes/Games'
 import { Hangman } from '@/routes/Hangman'
+import { ConnectFour, TicTacToe } from '@/routes/TurnGame'
 import { AdminOverview } from '@/routes/admin/AdminOverview'
 import { AdminAccounts } from '@/routes/admin/AdminAccounts'
 import { AdminContent } from '@/routes/admin/AdminContent'
@@ -126,7 +127,9 @@ export function App() {
         <Route path="/vertellen" element={<Tell />} />
         <Route path="/meldingen" element={<Notifications />} />
         <Route path="/spellen" element={<Games />} />
+        <Route path="/spellen/4-op-een-rij" element={<ConnectFour />} />
         <Route path="/spellen/galgje" element={<Hangman />} />
+        <Route path="/spellen/boter-kaas-en-eieren" element={<TicTacToe />} />
         <Route path="*" element={<Navigate to="/ik" replace />} />
       </Route>
     </Routes>

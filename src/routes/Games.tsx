@@ -98,6 +98,7 @@ const games = [
     title: '4 op een rij',
     className: 'bg-avatar-blue-bg text-avatar-blue-text',
     artwork: <FourInARowArt />,
+    path: '/spellen/4-op-een-rij',
   },
   {
     title: 'Draw it',
@@ -119,6 +120,7 @@ const games = [
     title: 'Boter-kaas-en-eieren',
     className: 'bg-avatar-blue-bg text-avatar-blue-text',
     artwork: <TicTacToeArt />,
+    path: '/spellen/boter-kaas-en-eieren',
   },
   {
     title: 'Stippen en vakjes',
