@@ -277,6 +277,7 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           display_name: string
+          hashtag_intro_seen_at: string | null
           id: string
           role: string
           status: string
@@ -291,6 +292,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name: string
+          hashtag_intro_seen_at?: string | null
           id: string
           role?: string
           status?: string
@@ -305,6 +307,7 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           display_name?: string
+          hashtag_intro_seen_at?: string | null
           id?: string
           role?: string
           status?: string
@@ -428,6 +431,7 @@ export type Database = {
           is_favorite: boolean
           kind: string
           photo_path: string | null
+          tags: string[]
           text: string
           visibility: string
         }
@@ -438,6 +442,7 @@ export type Database = {
           is_favorite?: boolean
           kind?: string
           photo_path?: string | null
+          tags?: string[]
           text: string
           visibility?: string
         }
@@ -448,6 +453,7 @@ export type Database = {
           is_favorite?: boolean
           kind?: string
           photo_path?: string | null
+          tags?: string[]
           text?: string
           visibility?: string
         }
@@ -787,7 +793,7 @@ export type Enums<
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions]
     : never
 
 export type CompositeTypes<
@@ -804,7 +810,7 @@ export type CompositeTypes<
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {

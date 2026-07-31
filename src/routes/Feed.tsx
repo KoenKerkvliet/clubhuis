@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
@@ -10,10 +11,12 @@ import { AuraPill, CommentPill } from '@/components/ui/Pill'
 import { StoryPhoto } from '@/components/story/StoryPhoto'
 import { StoryComments } from '@/components/story/StoryComments'
 import type { StoryComment } from '@/components/story/StoryComments'
+import { HashtagText } from '@/components/story/HashtagText'
 import { Poll } from '@/components/story/Poll'
 import { LoadingState } from '@/components/ui/LoadingState'
-import { ArrowRightIcon, MoreIcon, PlayIcon } from '@/components/ui/icons'
+import { ArrowRightIcon, MoreIcon, PlayIcon, SearchIcon, XIcon } from '@/components/ui/icons'
 import { showToast } from '@/lib/toast'
+import { countDistinctStoryTags, extractStoryTags, formatTag, MAX_STORY_TAGS, normalizeTag } from '@/lib/hashtags'
 
 const PAGE_SIZE = 20
 const MAX_FAVORITES = 20
@@ -39,6 +42,7 @@ interface FeedStory {
   author_id: string
   is_favorite: boolean
   kind: string
+  tags: string[]
   profiles: { username: string; display_name: string; avatar_url: string | null } | null
 }
 
@@ -54,9 +58,10 @@ function formatTime(iso: string) {
 
 export function Feed() {
   const { profile } = useAuth()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const targetStoryId = searchParams.get('story')
   const openTargetComments = searchParams.get('comments') === '1'
+  const activeTag = normalizeTag(searchParams.get('tag') ?? '')
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   const [stories, setStories] = useState<FeedStory[] | null>(null)
@@ -76,6 +81,7 @@ export function Feed() {
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set())
   const [reportError, setReportError] = useState<string | null>(null)
   const [highlightedStoryId, setHighlightedStoryId] = useState<string | null>(null)
+  const [tagInput, setTagInput] = useState(activeTag ? formatTag(activeTag) : '')
   const menuRef = useRef<HTMLDivElement>(null)
   const handledTargetRef = useRef<string | null>(null)
 
@@ -99,7 +105,12 @@ export function Feed() {
 
   useEffect(() => {
     if (profile) loadFeed()
-  }, [page, profile, targetStoryId])
+  }, [page, profile, targetStoryId, activeTag])
+
+  useEffect(() => {
+    setTagInput(activeTag ? formatTag(activeTag) : '')
+    setPage(0)
+  }, [activeTag])
 
   useEffect(() => {
     if (!targetStoryId || !stories?.some((story) => story.id === targetStoryId)) return
@@ -132,21 +143,23 @@ export function Feed() {
     setStories(null)
     const from = page * PAGE_SIZE
     const to = from + PAGE_SIZE - 1
-    const { data, count } = await supabase
+    let query = supabase
       .from('stories')
       .select(
-        'id, text, photo_path, visibility, created_at, author_id, is_favorite, kind, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
+        'id, text, photo_path, visibility, created_at, author_id, is_favorite, kind, tags, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
         { count: 'exact' },
       )
       .eq('visibility', 'friends')
       .order('created_at', { ascending: false })
       .range(from, to)
+    if (activeTag) query = query.contains('tags', [activeTag])
+    const { data, count } = await query
     let rows = (data as unknown as FeedStory[]) ?? []
     if (targetStoryId && !rows.some((story) => story.id === targetStoryId)) {
       const { data: targetStory } = await supabase
         .from('stories')
         .select(
-          'id, text, photo_path, visibility, created_at, author_id, is_favorite, kind, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
+          'id, text, photo_path, visibility, created_at, author_id, is_favorite, kind, tags, profiles!stories_author_id_fkey(username, display_name, avatar_url)',
         )
         .eq('id', targetStoryId)
         .maybeSingle()
@@ -299,8 +312,13 @@ export function Feed() {
   async function saveEdit(id: string) {
     const trimmed = editText.trim()
     if (!trimmed) return
-    await supabase.from('stories').update({ text: trimmed }).eq('id', id)
-    setStories((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed } : s)) ?? null)
+    if (countDistinctStoryTags(trimmed) > MAX_STORY_TAGS) {
+      showToast(`Kies maximaal ${MAX_STORY_TAGS} hashtags per verhaal.`)
+      return
+    }
+    const tags = extractStoryTags(trimmed)
+    await supabase.from('stories').update({ text: trimmed, tags }).eq('id', id)
+    setStories((prev) => prev?.map((s) => (s.id === id ? { ...s, text: trimmed, tags } : s)) ?? null)
     setEditingId(null)
     showToast('Verhaal opgeslagen.')
   }
@@ -355,6 +373,24 @@ export function Feed() {
   }
 
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE))
+  const visibleTags = [
+    ...new Set(stories?.flatMap((story) => story.tags ?? []) ?? []),
+  ].sort((a, b) => a.localeCompare(b, 'nl'))
+
+  function setTagFilter(tag: string | null) {
+    const next = new URLSearchParams(searchParams)
+    next.delete('story')
+    next.delete('comments')
+    if (tag) next.set('tag', normalizeTag(tag))
+    else next.delete('tag')
+    setSearchParams(next)
+  }
+
+  function submitTagSearch(e: FormEvent) {
+    e.preventDefault()
+    const tag = normalizeTag(tagInput)
+    setTagFilter(tag || null)
+  }
 
   return (
     <div className="flex flex-col gap-5">
@@ -382,6 +418,54 @@ export function Feed() {
 
       {reportError && <p className="text-sm font-bold text-warn-text">{reportError}</p>}
 
+      <Card className="flex flex-col gap-3">
+        <form onSubmit={submitTagSearch} className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-cream px-4 py-2.5 text-ink-500">
+            <SearchIcon width={17} height={17} />
+            <input
+              className="min-w-0 flex-1 bg-transparent text-sm font-bold text-ink-700 outline-none placeholder:text-ink-400/60"
+              placeholder="Zoek op #vakantie"
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+            />
+          </div>
+          <button
+            type="submit"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-500 text-paper"
+            aria-label="Zoek op hashtag"
+          >
+            <ArrowRightIcon width={17} height={17} />
+          </button>
+        </form>
+        {activeTag && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-blue-50 px-3 py-2">
+            <p className="text-sm font-extrabold text-blue-500">Filter: {formatTag(activeTag)}</p>
+            <button
+              type="button"
+              onClick={() => setTagFilter(null)}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-blue-500"
+              aria-label="Hashtagfilter wissen"
+            >
+              <XIcon width={15} height={15} />
+            </button>
+          </div>
+        )}
+        {!activeTag && visibleTags.length > 0 && (
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {visibleTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() => setTagFilter(tag)}
+                className="shrink-0 rounded-full bg-blue-50 px-3 py-1.5 text-sm font-extrabold text-blue-500"
+              >
+                {formatTag(tag)}
+              </button>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {incoming.map((req) => (
         <div key={req.id} className="rounded-card bg-blue-100 p-5">
           <p className="text-xs font-extrabold uppercase tracking-wide text-blue-500">1 verzoek</p>
@@ -406,7 +490,7 @@ export function Feed() {
 
         {stories?.length === 0 && (
           <Card className="text-center text-ink-400">
-            <p>Hier komen straks de verhalen van je vrienden.</p>
+            <p>{activeTag ? `Geen verhalen gevonden met ${formatTag(activeTag)}.` : 'Hier komen straks de verhalen van je vrienden.'}</p>
           </Card>
         )}
 
@@ -551,8 +635,16 @@ export function Feed() {
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                   />
+                  {countDistinctStoryTags(editText) > MAX_STORY_TAGS && (
+                    <p className="text-sm font-bold text-warn-text">
+                      Kies maximaal {MAX_STORY_TAGS} hashtags per verhaal.
+                    </p>
+                  )}
                   <div className="flex gap-2">
-                    <Button onClick={() => saveEdit(story.id)} disabled={!editText.trim()}>
+                    <Button
+                      onClick={() => saveEdit(story.id)}
+                      disabled={!editText.trim() || countDistinctStoryTags(editText) > MAX_STORY_TAGS}
+                    >
                       Opslaan
                     </Button>
                     <Button variant="muted" onClick={() => setEditingId(null)}>
@@ -562,7 +654,7 @@ export function Feed() {
                 </div>
               ) : (
                 <>
-                  <p className="mt-3 text-ink-700">{story.text}</p>
+                  <HashtagText text={story.text} onTagClick={setTagFilter} />
                   {story.photo_path && <StoryPhoto path={story.photo_path} />}
                   {story.kind === 'poll' && <Poll storyId={story.id} />}
                   <div className="mt-4 flex items-center gap-2">
