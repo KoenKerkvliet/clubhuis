@@ -44,6 +44,55 @@ function MemoryArt() {
   )
 }
 
+function TicTacToeArt() {
+  const marks = ['×', '', '○', '', '×', '', '○', '', '×']
+  return (
+    <div className="grid grid-cols-3 overflow-hidden rounded-lg border-2 border-avatar-blue-text/50" aria-hidden="true">
+      {marks.map((mark, index) => (
+        <span
+          key={index}
+          className="flex h-6 w-6 items-center justify-center border border-avatar-blue-text/30 text-lg font-extrabold leading-none"
+        >
+          {mark}
+        </span>
+      ))}
+    </div>
+  )
+}
+
+function DotsAndBoxesArt() {
+  return (
+    <div className="grid grid-cols-[auto_1.5rem_auto_1.5rem_auto] items-center gap-y-1" aria-hidden="true">
+      <span className="h-2 w-2 rounded-full bg-avatar-green-text" />
+      <span className="h-1 rounded-full bg-avatar-green-text/60" />
+      <span className="h-2 w-2 rounded-full bg-avatar-green-text" />
+      <span className="h-1 rounded-full bg-avatar-green-text/60" />
+      <span className="h-2 w-2 rounded-full bg-avatar-green-text" />
+      <span />
+      <span />
+      <span className="mx-auto h-6 w-1 rounded-full bg-avatar-green-text/60" />
+      <span />
+      <span />
+      <span className="h-2 w-2 rounded-full bg-avatar-green-text" />
+      <span className="h-1 rounded-full bg-avatar-green-text/60" />
+      <span className="h-2 w-2 rounded-full bg-avatar-green-text" />
+      <span className="h-1 rounded-full bg-avatar-green-text/60" />
+      <span className="h-2 w-2 rounded-full bg-avatar-green-text" />
+    </div>
+  )
+}
+
+function BattleshipArt() {
+  return (
+    <div className="relative h-16 w-20 overflow-hidden rounded-xl bg-blue-200" aria-hidden="true">
+      <span className="absolute bottom-3 left-3 h-3 w-12 rounded-b-full bg-blue-700" />
+      <span className="absolute bottom-6 left-8 h-4 w-5 rounded-t-md bg-blue-500" />
+      <span className="absolute bottom-10 left-10 h-3 w-0.5 bg-blue-700" />
+      <span className="absolute bottom-1 left-0 h-0.5 w-full bg-paper/80" />
+    </div>
+  )
+}
+
 const games = [
   {
     title: '4 op een rij',
@@ -65,10 +114,28 @@ const games = [
     className: 'bg-avatar-peach-bg text-avatar-peach-text',
     artwork: <MemoryArt />,
   },
+  {
+    title: 'Boter-kaas-en-eieren',
+    className: 'bg-avatar-blue-bg text-avatar-blue-text',
+    artwork: <TicTacToeArt />,
+  },
+  {
+    title: 'Stippen en vakjes',
+    className: 'bg-avatar-green-bg text-avatar-green-text',
+    artwork: <DotsAndBoxesArt />,
+  },
+  {
+    title: 'Zeeslag',
+    className: 'bg-avatar-blue-bg text-avatar-blue-text',
+    artwork: <BattleshipArt />,
+  },
 ]
 
 export function Games() {
   const navigate = useNavigate()
+  const sortedGames = [...games].sort((a, b) =>
+    a.title.localeCompare(b.title, 'nl', { numeric: true }),
+  )
 
   return (
     <div className="flex flex-col gap-5">
@@ -106,7 +173,7 @@ export function Games() {
       <section>
         <h2 className="mb-3 text-lg font-extrabold text-ink-900">Straks in de Spellenhoek</h2>
         <div className="grid grid-cols-2 gap-3">
-          {games.map((game) => (
+          {sortedGames.map((game) => (
             <article
               key={game.title}
               className={`flex min-h-44 flex-col justify-between rounded-card p-4 shadow-softer ${game.className}`}
