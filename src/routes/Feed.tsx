@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
@@ -12,7 +12,7 @@ import { StoryComments } from '@/components/story/StoryComments'
 import type { StoryComment } from '@/components/story/StoryComments'
 import { Poll } from '@/components/story/Poll'
 import { LoadingState } from '@/components/ui/LoadingState'
-import { MoreIcon } from '@/components/ui/icons'
+import { ArrowRightIcon, MoreIcon, PlayIcon } from '@/components/ui/icons'
 import { showToast } from '@/lib/toast'
 
 const PAGE_SIZE = 20
@@ -359,6 +359,26 @@ export function Feed() {
   return (
     <div className="flex flex-col gap-5">
       <BigTitle>Verhalen</BigTitle>
+
+      <Link
+        to="/spellen"
+        className="group flex items-center gap-4 rounded-card bg-blue-100 p-4 text-left shadow-softer transition-transform active:scale-[0.98]"
+      >
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-squircle bg-paper text-blue-500 shadow-softer">
+          <PlayIcon width={25} height={25} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-extrabold text-ink-900">Spellenhoek</span>
+          <span className="block text-sm font-semibold text-ink-500">
+            Samen spelen met je vrienden
+          </span>
+        </span>
+        <ArrowRightIcon
+          width={20}
+          height={20}
+          className="shrink-0 text-blue-500 transition-transform group-hover:translate-x-0.5"
+        />
+      </Link>
 
       {reportError && <p className="text-sm font-bold text-warn-text">{reportError}</p>}
 
