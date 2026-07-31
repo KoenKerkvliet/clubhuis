@@ -24,6 +24,7 @@ interface HangmanGame {
   creator_id: string
   guesser_id: string
   guessed_letters: string[]
+  revealed_word: string[]
   wrong_guesses: number
   status: 'active' | 'won' | 'lost' | 'cancelled'
   winner_id: string | null
@@ -52,6 +53,11 @@ function maskWord(word: string | null, guessedLetters: string[]) {
     .join(' ')
 }
 
+function revealedFromSecret(word: string | null, guessedLetters: string[]) {
+  if (!word) return []
+  return word.split('').map((letter) => (guessedLetters.includes(letter) ? letter : ''))
+}
+
 function timeLabel(iso: string) {
   return new Date(iso).toLocaleString('nl-NL', {
     day: '2-digit',
@@ -59,6 +65,64 @@ function timeLabel(iso: string) {
     hour: '2-digit',
     minute: '2-digit',
   })
+}
+
+function HangmanDrawing({ wrongGuesses }: { wrongGuesses: number }) {
+  const stage = Math.max(0, Math.min(MAX_WRONG_GUESSES, wrongGuesses))
+
+  return (
+    <div className="rounded-card bg-cream p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-wide text-ink-400">Poppetje</p>
+          <p className="mt-1 text-sm font-semibold text-ink-500">
+            {stage === 0 ? 'Nog geen missers.' : `${stage} van ${MAX_WRONG_GUESSES} missers.`}
+          </p>
+        </div>
+        <span className="rounded-pill bg-paper px-3 py-1 text-xs font-extrabold text-ink-500">
+          {MAX_WRONG_GUESSES - stage} over
+        </span>
+      </div>
+
+      <svg viewBox="0 0 180 150" className="mt-3 h-36 w-full text-ink-700" role="img" aria-label={`${stage} missers`}>
+        <line x1="25" y1="135" x2="130" y2="135" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+        <line x1="48" y1="135" x2="48" y2="18" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+        <line x1="48" y1="18" x2="118" y2="18" stroke="currentColor" strokeWidth="7" strokeLinecap="round" />
+        <line x1="118" y1="18" x2="118" y2="35" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />
+        {stage >= 1 && <circle cx="118" cy="49" r="14" fill="none" stroke="currentColor" strokeWidth="5" />}
+        {stage >= 2 && <line x1="118" y1="63" x2="118" y2="95" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />}
+        {stage >= 3 && <line x1="118" y1="72" x2="96" y2="86" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />}
+        {stage >= 4 && <line x1="118" y1="72" x2="140" y2="86" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />}
+        {stage >= 5 && <line x1="118" y1="95" x2="100" y2="120" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />}
+        {stage >= 6 && <line x1="118" y1="95" x2="136" y2="120" stroke="currentColor" strokeWidth="5" strokeLinecap="round" />}
+      </svg>
+    </div>
+  )
+}
+
+function RevealedWord({ letters }: { letters: string[] }) {
+  if (letters.length === 0) {
+    return (
+      <p className="text-sm font-semibold text-ink-400">
+        Het woord wordt geladen...
+      </p>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {letters.map((letter, index) => (
+        <span
+          key={`${index}-${letter}`}
+          className={`flex h-12 min-w-10 items-center justify-center rounded-2xl px-2 text-xl font-extrabold uppercase shadow-softer ${
+            letter ? 'bg-aura text-aura-text' : 'bg-paper text-ink-300'
+          }`}
+        >
+          {letter || ''}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 export function Hangman() {
@@ -109,7 +173,7 @@ export function Hangman() {
     setLoading(true)
     const { data } = await gameDb
       .from('hangman_games')
-      .select('id, creator_id, guesser_id, guessed_letters, wrong_guesses, status, winner_id, created_at, updated_at')
+      .select('id, creator_id, guesser_id, guessed_letters, revealed_word, wrong_guesses, status, winner_id, created_at, updated_at')
       .or(`creator_id.eq.${profile.id},guesser_id.eq.${profile.id}`)
       .order('updated_at', { ascending: false })
       .limit(20)
@@ -180,6 +244,7 @@ export function Hangman() {
     const other = profilesById[otherId]
     const secret = secretsByGame[game.id] ?? null
     const masked = isCreator ? maskWord(secret, game.guessed_letters) : null
+    const visibleLetters = isCreator ? revealedFromSecret(secret, game.guessed_letters) : game.revealed_word
     const remaining = MAX_WRONG_GUESSES - game.wrong_guesses
     const isMyTurn = !isCreator && game.status === 'active'
     const winnerName = game.winner_id === profile?.id ? 'jij' : profilesById[game.winner_id ?? '']?.display_name
@@ -202,17 +267,25 @@ export function Hangman() {
         {isCreator ? (
           <div className="rounded-card bg-cream p-4">
             <p className="text-xs font-extrabold uppercase tracking-wide text-ink-400">Jouw woord</p>
-            <p className="mt-2 text-2xl font-extrabold tracking-[0.2em] text-ink-900">{masked ?? '...'}</p>
+            <div className="mt-3">
+              <RevealedWord letters={visibleLetters} />
+            </div>
+            <p className="sr-only">{masked ?? ''}</p>
             <p className="mt-2 text-sm font-semibold text-ink-400">Geheim woord: {secret ?? 'verborgen'}</p>
           </div>
         ) : (
           <div className="rounded-card bg-blue-50 p-4">
             <p className="text-xs font-extrabold uppercase tracking-wide text-blue-500">Jij raadt</p>
-            <p className="mt-2 text-sm font-semibold text-ink-500">
-              Kies letters. Clubhuis laat alleen zien of je goed zit.
+            <div className="mt-3">
+              <RevealedWord letters={visibleLetters} />
+            </div>
+            <p className="mt-3 text-sm font-semibold text-ink-500">
+              Goede letters verschijnen meteen op de juiste plek.
             </p>
           </div>
         )}
+
+        <HangmanDrawing wrongGuesses={game.wrong_guesses} />
 
         <div className="flex flex-wrap gap-2">
           {game.guessed_letters.length === 0 ? (
