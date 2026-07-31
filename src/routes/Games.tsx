@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { TitleHeader } from '@/components/layout/PageHeader'
 import { PencilIcon, PlayIcon } from '@/components/ui/icons'
 
@@ -108,6 +108,7 @@ const games = [
     title: 'Galgje',
     className: 'bg-avatar-sand-bg text-avatar-sand-text',
     artwork: <WordArt />,
+    path: '/spellen/galgje',
   },
   {
     title: 'Memory',
@@ -173,18 +174,34 @@ export function Games() {
       <section>
         <h2 className="mb-3 text-lg font-extrabold text-ink-900">Straks in de Spellenhoek</h2>
         <div className="grid grid-cols-2 gap-3">
-          {sortedGames.map((game) => (
-            <article
-              key={game.title}
-              className={`flex min-h-44 flex-col justify-between rounded-card p-4 shadow-softer ${game.className}`}
-            >
-              <span className="self-start rounded-pill bg-paper/80 px-2.5 py-1 text-[11px] font-extrabold">
-                Binnenkort
-              </span>
-              <div className="my-4 flex min-h-14 items-center justify-center">{game.artwork}</div>
-              <h3 className="text-center font-extrabold">{game.title}</h3>
-            </article>
-          ))}
+          {sortedGames.map((game) => {
+            const content = (
+              <>
+                <span className="self-start rounded-pill bg-paper/80 px-2.5 py-1 text-[11px] font-extrabold">
+                  {game.path ? 'Speel nu' : 'Binnenkort'}
+                </span>
+                <div className="my-4 flex min-h-14 items-center justify-center">{game.artwork}</div>
+                <h3 className="text-center font-extrabold">{game.title}</h3>
+              </>
+            )
+
+            return game.path ? (
+              <Link
+                key={game.title}
+                to={game.path}
+                className={`flex min-h-44 flex-col justify-between rounded-card p-4 shadow-softer transition-transform active:scale-[0.98] ${game.className}`}
+              >
+                {content}
+              </Link>
+            ) : (
+              <article
+                key={game.title}
+                className={`flex min-h-44 flex-col justify-between rounded-card p-4 shadow-softer ${game.className}`}
+              >
+                {content}
+              </article>
+            )
+          })}
         </div>
       </section>
 
